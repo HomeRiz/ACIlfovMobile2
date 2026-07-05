@@ -1,0 +1,7 @@
+# Reguli de "curatenie" a codului (linter). Ajuta sa scrii cod corect si uniform.
+include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    prefer_const_constructors: true
+    prefer_final_locals: true

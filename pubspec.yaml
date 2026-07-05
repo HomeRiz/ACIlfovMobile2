@@ -1,0 +1,61 @@
+# ===========================================================================
+#  pubspec.yaml  =  "CARTEA DE IDENTITATE" A APLICATIEI
+# ---------------------------------------------------------------------------
+#  Aici se declara numele aplicatiei, versiunea si TOATE pachetele (librariile)
+#  de care are nevoie. Dupa ce modifici acest fisier, ruleaza in terminal:
+#     flutter pub get
+#  ca sa descarce pachetele noi.
+# ===========================================================================
+
+name: acilfov_mobile
+description: Aplicatia mobila ACIlfov (v2) - nativa, cu WebView doar pentru autentificare.
+publish_to: 'none' # aplicatie privata, NU se publica pe pub.dev
+version: 2.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Iconite in stil iOS (Cupertino).
+  cupertino_icons: ^1.0.8
+
+  # Mini-browserul integrat - folosit DOAR pentru pasul de autentificare (login).
+  webview_flutter: ^4.13.1
+
+  # Verifica daca telefonul are internet si anunta cand apare/dispare conexiunea.
+  connectivity_plus: ^6.1.0
+
+  # Seif criptat (Keychain pe iOS / EncryptedSharedPreferences pe Android) unde
+  # pastram cookie-ul de sesiune si, in viitor, tokenul de API.
+  flutter_secure_storage: ^9.2.4
+
+  # STATE MANAGEMENT (Provider): mecanismul prin care ecranele afla cand s-au
+  # schimbat datele si se redeseneaza singure.
+  provider: ^6.1.2
+
+  # Apeluri HTTP catre API - pregatit pentru viitor (cand ACIlfov publica API-ul).
+  http: ^1.2.2
+
+  # NOTIFICARI LOCALE (fara server): reamintiri pe telefon pentru perioada de
+  # index si pentru facturi scadente.
+  flutter_local_notifications: ^17.0.0
+
+  # Fus orar corect pentru programarea notificarilor la ora dorita.
+  timezone: ^0.9.0
+
+  # Incarca fisierul .env (pentru testare cu cookie real dintr-un cont).
+  flutter_dotenv: ^5.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/logo.png
+    - .env
