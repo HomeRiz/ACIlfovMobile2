@@ -14,6 +14,8 @@
 // ===========================================================================
 
 import '../models/account.dart';
+import '../models/consumption_point.dart';
+import '../models/consumption_record.dart';
 import '../models/invoice.dart';
 import '../models/meter_index.dart';
 
@@ -22,4 +24,15 @@ abstract class ACIRepository {
   Future<List<Invoice>> getInvoices();   // lista de facturi
   Future<MeterIndex> getMeterIndex();    // indexul + perioada de transmitere
   Future<void> submitMeterIndex(int value); // trimite un index nou
+
+  // Punctele de consum (locatii + contoare) ale clientului.
+  Future<List<ConsumptionPoint>> getConsumptionPoints();
+
+  // Istoricul de consum pentru o locatie + contor, intr-un interval de timp.
+  Future<List<ConsumptionRecord>> getConsumption({
+    required String idLocatie,
+    required String contor,
+    required DateTime start,
+    required DateTime end,
+  });
 }

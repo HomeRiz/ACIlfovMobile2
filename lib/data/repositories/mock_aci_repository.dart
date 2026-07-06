@@ -7,6 +7,8 @@
 // ===========================================================================
 
 import '../models/account.dart';
+import '../models/consumption_point.dart';
+import '../models/consumption_record.dart';
 import '../models/invoice.dart';
 import '../models/meter_index.dart';
 import 'aci_repository.dart';
@@ -72,5 +74,47 @@ class MockACIRepository implements ACIRepository {
   Future<void> submitMeterIndex(int value) async {
     await Future.delayed(const Duration(milliseconds: 400));
     // Mock: nu trimite nimic real, doar simuleaza succesul.
+  }
+
+  @override
+  Future<List<ConsumptionPoint>> getConsumptionPoints() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return const [
+      ConsumptionPoint(
+        idLocatie: '1',
+        clientName: 'Popescu Ion',
+        address: 'Str. Exemplu nr. 10, Otopeni, Ilfov',
+        meters: ['60000001'],
+      ),
+    ];
+  }
+
+  @override
+  Future<List<ConsumptionRecord>> getConsumption({
+    required String idLocatie,
+    required String contor,
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    final list = <ConsumptionRecord>[];
+    var d = DateTime(start.year, start.month, 1);
+    var index = 500;
+    while (!d.isAfter(end)) {
+      final consum = 8 + (d.month % 6);
+      list.add(ConsumptionRecord(
+        contor: contor,
+        dataConsum: DateTime(d.year, d.month, 1),
+        indexVechi: index,
+        indexNou: index + consum,
+        diferenta: consum,
+        tipConsum: 'CITIRE',
+        factura: '',
+        dataEmitere: null,
+      ));
+      index += consum;
+      d = DateTime(d.year, d.month + 1, 1);
+    }
+    return list.reversed.toList(); // cele mai noi sus
   }
 }

@@ -3,53 +3,24 @@
 // ---------------------------------------------------------------------------
 //  Ca pe portalul oficial:
 //   - Perioada (data de inceput + data de sfarsit)
-//   - Punct consum = codul de client (util cand ai mai multi clienti pe cont)
-//     + adresa punctului
-//   - Contor (util cand esti firma si ai mai multe contoare)
-//   - Cautarea se face AUTOMAT imediat ce schimbi perioada / punctul / contorul.
+//   - Punct consum (locatia) + adresa punctului
+//   - Contor (util cand ai mai multe contoare)
+//   - Cautarea se face AUTOMAT cand schimbi perioada / punctul / contorul.
 //
-//  Rezultatele arata: Contor, Data consum, Index vechi, Index nou, Consum,
-//  Tip consum, Factura, Data emitere.
+//  Rezultatele arata, exact ca pe web: Contor, Data consum, Index vechi,
+//  Index nou, Consum, Tip consum, Factura, Data emitere.
 //
-//  ACUM datele sunt generate local (exemplu). Cand apare API-ul ACIlfov,
-//  aceleasi filtre vor cere date reale (repository), fara sa schimbam ecranul.
+//  Datele vin ACUM din repository (sursa reala prin cookie): punctele din
+//  /consum/getPuncteConsumValide + /getContoare, iar citirile din /consum/Consums.
 // ===========================================================================
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/utils/format.dart';
-import '../../state/account_provider.dart';
-
-// Un punct de consum: adresa + contoarele lui.
-class _PunctInfo {
-  final String adresa;
-  final List<String> contoare;
-  const _PunctInfo({required this.adresa, required this.contoare});
-}
-
-// O citire de consum (un rand de rezultat).
-class _Consum {
-  final String contor;
-  final DateTime dataConsum;
-  final int indexVechi;
-  final int indexNou;
-  final int consum;
-  final String tipConsum;
-  final String factura;
-  final DateTime? dataEmitere;
-
-  const _Consum({
-    required this.contor,
-    required this.dataConsum,
-    required this.indexVechi,
-    required this.indexNou,
-    required this.consum,
-    required this.tipConsum,
-    required this.factura,
-    required this.dataEmitere,
-  });
-}
+import '../../data/models/consumption_point.dart';
+import '../../data/models/consumption_record.dart';
+import '../../data/repositories/aci_repository.dart';
 
 class ConsumptionView extends StatefulWidget {
   const ConsumptionView({super.key});
@@ -59,14 +30,23 @@ class ConsumptionView extends StatefulWidget {
 }
 
 class _ConsumptionViewState extends State<ConsumptionView> {
+  ACIRepository? _repo;
+
+  // Perioada selectata.
   late DateTime _start;
   late DateTime _end;
-  String? _punct; // cod client selectat
-  String? _contor; // contor selectat
-  bool _seeded = false;
 
-  final Map<String, _PunctInfo> _puncte = {};
-  List<_Consum> _results = [];
+  // Punctele de consum + selectiile curente.
+  bool _loadingPoints = true;
+  String? _pointsError;
+  List<ConsumptionPoint> _points = [];
+  String? _idLocatie; // locatia selectata
+  String? _contor; // contorul selectat
+
+  // Rezultatele (citirile de consum).
+  bool _loadingRecords = false;
+  String? _recordsError;
+  List<ConsumptionRecord> _records = [];
 
   @override
   void initState() {
@@ -74,52 +54,79 @@ class _ConsumptionViewState extends State<ConsumptionView> {
     final now = DateTime.now();
     _end = DateTime(now.year, now.month, now.day);
     _start = DateTime(now.year, now.month - 6, now.day); // ultimele ~6 luni
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadPoints());
   }
 
-  // Prima data pregatim punctele de consum, pornind de la contul curent.
-  void _seed(AccountProvider p) {
-    if (_seeded) return;
-    final acc = p.account;
-    final cod = acc?.clientCode ?? '109346';
-    final adr = acc?.address ?? 'JILAVA MORII, nr. 69 B';
-    _puncte[cod] = _PunctInfo(adresa: adr, contoare: const ['60874265']);
-    // Exemplu pentru firme / mai multe puncte (decomenteaza pentru test):
-    // _puncte['200111'] = const _PunctInfo(
-    //     adresa: 'Alt punct de consum', contoare: ['70123456', '70123457']);
-    _punct = cod;
-    _contor = _puncte[cod]!.contoare.first;
-    _seeded = true;
-    _results = _compute(); // fara setState: suntem in timpul build-ului
-  }
-
-  // Genereaza citirile lunare din perioada aleasa (functie pura, fara setState).
-  List<_Consum> _compute() {
-    final list = <_Consum>[];
-    var d = DateTime(_start.year, _start.month, 1);
-    var index = 500;
-    while (!d.isAfter(_end)) {
-      final consum = 8 + (d.month % 6); // exemplu variabil
-      final vechi = index;
-      final nou = index + consum;
-      list.add(_Consum(
-        contor: _contor ?? '',
-        dataConsum: DateTime(d.year, d.month, 1),
-        indexVechi: vechi,
-        indexNou: nou,
-        consum: consum,
-        tipConsum: 'CITIRE',
-        factura: '',
-        dataEmitere: null,
-      ));
-      index = nou;
-      d = DateTime(d.year, d.month + 1, 1);
+  ConsumptionPoint? get _selectedPoint {
+    for (final p in _points) {
+      if (p.idLocatie == _idLocatie) return p;
     }
-    return list.reversed.toList(); // cele mai noi sus
+    return null;
   }
 
-  // Cautare automata din handlere (dupa alegerea datei / punctului / contorului).
-  void _search() {
-    setState(() => _results = _compute());
+  // Incarca punctele de consum ale clientului si porneste prima cautare.
+  Future<void> _loadPoints() async {
+    _repo ??= context.read<ACIRepository>();
+    setState(() {
+      _loadingPoints = true;
+      _pointsError = null;
+    });
+    try {
+      final points = await _repo!.getConsumptionPoints();
+      if (!mounted) return;
+      setState(() {
+        _points = points;
+        if (points.isNotEmpty) {
+          _idLocatie = points.first.idLocatie;
+          _contor = points.first.meters.isNotEmpty
+              ? points.first.meters.first
+              : null;
+        }
+        _loadingPoints = false;
+      });
+      await _search();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _pointsError = '$e';
+        _loadingPoints = false;
+      });
+    }
+  }
+
+  // Cauta citirile pentru locatia + contorul + perioada curente.
+  Future<void> _search() async {
+    final loc = _idLocatie;
+    final contor = _contor;
+    if (loc == null || contor == null) {
+      setState(() => _records = const []);
+      return;
+    }
+    setState(() {
+      _loadingRecords = true;
+      _recordsError = null;
+    });
+    try {
+      final recs = await (_repo ??= context.read<ACIRepository>())
+          .getConsumption(
+        idLocatie: loc,
+        contor: contor,
+        start: _start,
+        end: _end,
+      );
+      if (!mounted) return;
+      setState(() {
+        _records = recs;
+        _loadingRecords = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _recordsError = '$e';
+        _records = const [];
+        _loadingRecords = false;
+      });
+    }
   }
 
   Future<void> _pickDate({required bool start}) async {
@@ -138,89 +145,121 @@ class _ConsumptionViewState extends State<ConsumptionView> {
           _end = picked;
         }
       });
-      _search(); // cautare automata dupa alegerea datei
+      _search();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AccountProvider>(
-      builder: (context, p, _) {
-        _seed(p);
-        return Column(
-          children: [
-            _filters(),
-            const Divider(height: 1),
-            Expanded(child: _resultsList()),
-          ],
-        );
-      },
+    return Column(
+      children: [
+        _filters(),
+        const Divider(height: 1),
+        Expanded(child: _resultsList()),
+      ],
     );
   }
 
   // ------------------------------------------------------------- filtre sus
   Widget _filters() {
-    final contoare =
-        _punct != null ? _puncte[_punct]!.contoare : const <String>[];
-    final adresa = _punct != null ? _puncte[_punct]!.adresa : '';
+    final meters = _selectedPoint?.meters ?? const <String>[];
+    final address = _selectedPoint?.address ?? '';
     return Padding(
       padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Perioada',
-              style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF335C80))),
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, color: Color(0xFF335C80))),
           const SizedBox(height: 6),
           Row(
             children: [
-              Expanded(child: _dateField('De la', _start, () => _pickDate(start: true))),
+              Expanded(
+                  child: _dateField(
+                      'De la', _start, () => _pickDate(start: true))),
               const SizedBox(width: 8),
-              Expanded(child: _dateField('Pana la', _end, () => _pickDate(start: false))),
+              Expanded(
+                  child: _dateField(
+                      'Pana la', _end, () => _pickDate(start: false))),
             ],
           ),
           const SizedBox(height: 12),
           const Text('Punct consum',
-              style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF335C80))),
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, color: Color(0xFF335C80))),
           const SizedBox(height: 6),
-          DropdownButtonFormField<String>(
-            value: _punct,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              isDense: true,
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          if (_loadingPoints)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Row(children: [
+                SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2)),
+                SizedBox(width: 10),
+                Text('Se incarca punctele de consum...'),
+              ]),
+            )
+          else if (_pointsError != null)
+            Text('Nu am putut incarca punctele: $_pointsError',
+                style: const TextStyle(color: Colors.red))
+          else
+            DropdownButtonFormField<String>(
+              initialValue: _idLocatie,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                isDense: true,
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              ),
+              items: [
+                for (final p in _points)
+                  DropdownMenuItem(
+                    value: p.idLocatie,
+                    child: Text(
+                      p.address.isNotEmpty
+                          ? p.address
+                          : 'Locatie ${p.idLocatie}',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+              onChanged: (v) {
+                if (v == null) return;
+                setState(() {
+                  _idLocatie = v;
+                  final m = _selectedPoint?.meters ?? const <String>[];
+                  _contor = m.isNotEmpty ? m.first : null;
+                });
+                _search();
+              },
             ),
-            items: [
-              for (final k in _puncte.keys)
-                DropdownMenuItem(value: k, child: Text(k)),
-            ],
-            onChanged: (v) {
-              if (v == null) return;
-              setState(() {
-                _punct = v;
-                _contor = _puncte[v]!.contoare.first;
-              });
-              _search();
-            },
-          ),
-          if (adresa.isNotEmpty)
+          if (address.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Text(adresa,
-                  style: const TextStyle(color: Colors.black54, fontSize: 12)),
+              child: Text(address,
+                  style:
+                      const TextStyle(color: Colors.black54, fontSize: 12)),
             ),
           const SizedBox(height: 12),
           const Text('Contor',
-              style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF335C80))),
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, color: Color(0xFF335C80))),
           const SizedBox(height: 6),
           DropdownButtonFormField<String>(
-            value: _contor,
+            initialValue: _contor,
+            isExpanded: true,
             decoration: const InputDecoration(
               border: OutlineInputBorder(),
               isDense: true,
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              contentPadding:
+                  EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             ),
             items: [
-              for (final c in contoare) DropdownMenuItem(value: c, child: Text(c)),
+              for (final c in meters)
+                DropdownMenuItem(value: c, child: Text(c)),
             ],
             onChanged: (v) {
               if (v == null) return;
@@ -252,34 +291,52 @@ class _ConsumptionViewState extends State<ConsumptionView> {
 
   // -------------------------------------------------------------- rezultate
   Widget _resultsList() {
-    if (_results.isEmpty) {
-      return const Center(child: Text('Nu exista citiri in perioada selectata.'));
+    if (_loadingRecords) {
+      return const Center(child: CircularProgressIndicator());
     }
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-      itemCount: _results.length,
-      itemBuilder: (context, i) {
-        final r = _results[i];
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _kv('Contor', r.contor, strong: true),
-                _kv('Data consum', dmy(r.dataConsum)),
-                _kv('Index vechi', '${r.indexVechi}'),
-                _kv('Index nou', '${r.indexNou}'),
-                _kv('Consum', '${r.consum} mc'),
-                _kv('Tip consum', r.tipConsum),
-                _kv('Factura', r.factura.isEmpty ? '-' : r.factura),
-                _kv('Data emitere',
-                    r.dataEmitere == null ? '-' : dmy(r.dataEmitere!)),
-              ],
+    if (_recordsError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text('Nu am putut incarca citirile: $_recordsError',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red)),
+        ),
+      );
+    }
+    if (_records.isEmpty) {
+      return const Center(
+          child: Text('Nu exista citiri in perioada selectata.'));
+    }
+    return RefreshIndicator(
+      onRefresh: _search,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+        itemCount: _records.length,
+        itemBuilder: (context, i) {
+          final r = _records[i];
+          return Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _kv('Contor', r.contor, strong: true),
+                  _kv('Data consum',
+                      r.dataConsum == null ? '-' : dmy(r.dataConsum!)),
+                  _kv('Index vechi', '${r.indexVechi}'),
+                  _kv('Index nou', '${r.indexNou}'),
+                  _kv('Consum', '${r.diferenta} mc'),
+                  _kv('Tip consum', r.tipConsum.isEmpty ? '-' : r.tipConsum),
+                  _kv('Factura', r.factura.trim().isEmpty ? '-' : r.factura),
+                  _kv('Data emitere',
+                      r.dataEmitere == null ? '-' : dmy(r.dataEmitere!)),
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
@@ -297,7 +354,8 @@ class _ConsumptionViewState extends State<ConsumptionView> {
           Expanded(
             child: Text(value,
                 style: TextStyle(
-                    fontWeight: strong ? FontWeight.bold : FontWeight.normal)),
+                    fontWeight:
+                        strong ? FontWeight.bold : FontWeight.normal)),
           ),
         ],
       ),

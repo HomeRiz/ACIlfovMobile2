@@ -9,6 +9,8 @@
 // ===========================================================================
 
 import '../models/account.dart';
+import '../models/consumption_point.dart';
+import '../models/consumption_record.dart';
 import '../models/invoice.dart';
 import '../models/meter_index.dart';
 import '../sources/api_client.dart';
@@ -45,5 +47,22 @@ class ApiACIRepository implements ACIRepository {
       'index_nou': value,
       'verificare_index': value,
     }); // TODO: numele reale ale campurilor/caii
+  }
+
+  @override
+  Future<List<ConsumptionPoint>> getConsumptionPoints() async {
+    // TODO: cand exista API oficial, mapeaza raspunsul la ConsumptionPoint.
+    return const [];
+  }
+
+  @override
+  Future<List<ConsumptionRecord>> getConsumption({
+    required String idLocatie,
+    required String contor,
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    // TODO: cand exista API oficial, mapeaza raspunsul la ConsumptionRecord.
+    return const [];
   }
 }

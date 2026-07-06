@@ -32,13 +32,13 @@ class AccountInfoView extends StatelessWidget {
             const Divider(),
             const _Header('Contact ACIlfov'),
             // Datele de contact reale se completeaza aici.
-            const _Info(Icons.phone, 'Telefon', '021 / xxx xx xx'),
+            const _Info(Icons.phone, 'Telefon', '0374 / 205 200'),
             const _Info(Icons.email, 'E-mail', 'contact@acilfov.ro'),
             const _Info(Icons.public, 'Website', 'www.acilfov.ro'),
             const Padding(
               padding: EdgeInsets.all(16),
               child: Text(
-                'Completeaza datele de contact reale ale ACIlfov in acest ecran.',
+                'În intervalul orar 17:00–07:30, Call Center-ul va prelua exclusiv sesizări privind avarii la rețeaua publică de apă și canalizare (ex. lipsă apă, refulări ale canalizarii, neconformități ale aspectului apei).',
                 style: TextStyle(color: Colors.black54, fontSize: 12),
               ),
             ),

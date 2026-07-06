@@ -98,11 +98,18 @@ class _IndexViewState extends State<IndexView> {
       );
       return;
     }
-    await p.submitIndex(value);
-    if (!mounted) return;
-    _controller.clear();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Index trimis.')),
-    );
+    try {
+      await p.submitIndex(value);
+      if (!mounted) return;
+      _controller.clear();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Index trimis.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nu am putut trimite indexul: $e')),
+      );
+    }
   }
 }
