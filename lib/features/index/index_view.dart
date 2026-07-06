@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/utils/format.dart';
+import '../../data/models/consumption_point.dart';
+import '../../data/repositories/aci_repository.dart';
 import '../../state/account_provider.dart';
 
 class IndexView extends StatefulWidget {
@@ -20,11 +22,37 @@ class IndexView extends StatefulWidget {
 
 class _IndexViewState extends State<IndexView> {
   final _controller = TextEditingController();
+  List<ConsumptionPoint> _points = [];
+  String? _pointError;
+  bool _loadingPoints = true;
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadPoints());
+  }
+
+  Future<void> _loadPoints() async {
+    try {
+      final points = await context.read<ACIRepository>().getConsumptionPoints();
+      if (!mounted) return;
+      setState(() {
+        _points = points;
+        _loadingPoints = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _pointError = '$e';
+        _loadingPoints = false;
+      });
+    }
   }
 
   @override
@@ -44,28 +72,27 @@ class _IndexViewState extends State<IndexView> {
           children: [
             Card(
               color: open ? const Color(0xFFE8F5E9) : const Color(0xFFFFF3E0),
-              child: ListTile(
-                isThreeLine: true,
-                leading: Icon(open ? Icons.check_circle : Icons.schedule,
-                    color: open ? Colors.green : Colors.orange),
-                title: Text(
-                    open ? 'Perioada este deschisa' : 'Perioada este inchisa'),
-                subtitle: Text(
-                  'Indexul se transmite de pe 25 pana la finalul lunii.\n'
-                  'Interval: ${dmy(mi.windowStart)} - ${dmy(mi.windowEnd)}',
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(open ? Icons.check_circle : Icons.schedule,
+                        color: open ? Colors.green : Colors.orange),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        open
+                            ? 'Va aflati in perioada de transmitere a indexului.'
+                            : 'Nu va aflati in perioada de transmitere a indexului, transmiterea indexului se face dupa data de ${mi.windowStart.day} ale fiecarei luni!',
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            if (mi.lastValue != null)
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.history),
-                  title: Text('Ultimul index: ${mi.lastValue}'),
-                  subtitle: mi.lastReadDate != null
-                      ? Text('Transmis pe ${dmy(mi.lastReadDate!)}')
-                      : null,
-                ),
-              ),
+            const SizedBox(height: 12),
+            _pointSection(mi.lastValue, mi.lastReadDate),
             const SizedBox(height: 8),
             TextField(
               controller: _controller,
@@ -89,6 +116,42 @@ class _IndexViewState extends State<IndexView> {
       },
     );
   }
+
+  Widget _pointSection(int? lastValue, DateTime? lastReadDate) {
+    if (_loadingPoints) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_pointError != null) {
+      return Text('Nu am putut incarca punctul de consum: $_pointError',
+          style: const TextStyle(color: Colors.red));
+    }
+    final point = _points.isNotEmpty ? _points.first : null;
+    final meter = point?.meters.isNotEmpty == true ? point!.meters.first : '-';
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            _kv('Punct Consum', point?.address.isNotEmpty == true ? point!.address : '-'),
+            _kv('Contor', meter),
+            _kv('Index anterior', lastValue?.toString() ?? '-'),
+            _kv('Data citirii anterioare', lastReadDate == null ? '-' : dmy(lastReadDate)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _kv(String label, String value) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(width: 148, child: Text(label, style: const TextStyle(color: Colors.black54))),
+            Expanded(child: Text(value)),
+          ],
+        ),
+      );
 
   Future<void> _submit(AccountProvider p) async {
     final value = int.tryParse(_controller.text.trim());

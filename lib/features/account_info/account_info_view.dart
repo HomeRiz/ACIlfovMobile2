@@ -1,75 +1,250 @@
 // ===========================================================================
-//  account_info_view.dart  =  PAGINA "INFORMATII CONT SI CONTACT"
+//  account_info_view.dart  =  PAGINA "INFORMATII CONT"
 // ---------------------------------------------------------------------------
-//  Datele contului tau + datele de contact ale ACIlfov (telefon, e-mail, web).
+//  Structura portalului: perioada + istoricul operatiilor/cererilor pe cont.
+//  Datele vin din /rest/self/informatiiCont/InformatiiConts.
 // ===========================================================================
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../state/account_provider.dart';
+import '../../core/utils/format.dart';
+import '../../data/models/account_activity.dart';
+import '../../data/repositories/aci_repository.dart';
 
-class AccountInfoView extends StatelessWidget {
+class AccountInfoView extends StatefulWidget {
   const AccountInfoView({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Consumer<AccountProvider>(
-      builder: (context, p, _) {
-        final acc = p.account;
-        return ListView(
-          children: [
-            const _Header('Contul meu'),
-            if (acc != null) ...[
-              _Info(Icons.person, 'Titular', acc.holderName),
-              _Info(Icons.badge, 'Cod client', acc.clientCode),
-              _Info(Icons.location_on, 'Adresa', acc.address),
-            ] else
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('Se incarca...'),
-              ),
-            const Divider(),
-            const _Header('Contact ACIlfov'),
-            // Datele de contact reale se completeaza aici.
-            const _Info(Icons.phone, 'Telefon', '0374 / 205 200'),
-            const _Info(Icons.email, 'E-mail', 'contact@acilfov.ro'),
-            const _Info(Icons.public, 'Website', 'www.acilfov.ro'),
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'În intervalul orar 17:00–07:30, Call Center-ul va prelua exclusiv sesizări privind avarii la rețeaua publică de apă și canalizare (ex. lipsă apă, refulări ale canalizarii, neconformități ale aspectului apei).',
-                style: TextStyle(color: Colors.black54, fontSize: 12),
-              ),
-            ),
-          ],
+  State<AccountInfoView> createState() => _AccountInfoViewState();
+}
+
+class _AccountInfoViewState extends State<AccountInfoView> {
+  late DateTime _start;
+  late DateTime _end;
+  Future<List<AccountActivity>>? _future;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _end = DateTime(now.year, now.month, now.day);
+    _start = _end.subtract(const Duration(days: 180));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _future ??= _load();
+  }
+
+  Future<List<AccountActivity>> _load() {
+    return context.read<ACIRepository>().getAccountActivities(
+          start: _start,
+          end: _end,
         );
-      },
+  }
+
+  void _reload() {
+    setState(() => _future = _load());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: () async => _reload(),
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(12),
+        children: [
+          const _Header('Perioda'),
+          Row(
+            children: [
+              Expanded(
+                child:
+                    _dateField('De la', _start, () => _pickDate(start: true)),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child:
+                    _dateField('Pana la', _end, () => _pickDate(start: false)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          FutureBuilder<List<AccountActivity>>(
+            future: _future,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (snapshot.hasError) {
+                return _MessageCard(
+                  icon: Icons.error_outline,
+                  text: 'Nu am putut incarca informatiile contului.',
+                  actionLabel: 'Reincarca',
+                  onAction: _reload,
+                );
+              }
+              final activities = snapshot.data ?? const <AccountActivity>[];
+              if (activities.isEmpty) {
+                return const _MessageCard(
+                  icon: Icons.info_outline,
+                  text: 'Nu exista operatii pentru perioada selectata.',
+                );
+              }
+              return Column(
+                children: [
+                  for (final activity in activities)
+                    _OperationCard(activity: activity),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickDate({required bool start}) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: start ? _start : _end,
+      firstDate: DateTime(2015),
+      lastDate: DateTime(now.year + 1, 12, 31),
+    );
+    if (picked == null) return;
+    setState(() {
+      if (start) {
+        _start = picked;
+      } else {
+        _end = picked;
+      }
+    });
+    if (_start.isAfter(_end)) {
+      setState(() {
+        final tmp = _start;
+        _start = _end;
+        _end = tmp;
+      });
+    }
+    _reload();
+  }
+
+  Widget _dateField(String label, DateTime value, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+          isDense: true,
+          suffixIcon: const Icon(Icons.calendar_today, size: 18),
+        ),
+        child: Text(dmy(value)),
+      ),
     );
   }
 }
 
 class _Header extends StatelessWidget {
   final String text;
+
   const _Header(this.text);
+
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-        child: Text(text,
-            style: const TextStyle(
-                fontWeight: FontWeight.bold, color: Color(0xFF335C80))),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF335C80),
+          ),
+        ),
       );
 }
 
-class _Info extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  const _Info(this.icon, this.label, this.value);
+class _OperationCard extends StatelessWidget {
+  final AccountActivity activity;
+
+  const _OperationCard({required this.activity});
+
   @override
-  Widget build(BuildContext context) => ListTile(
-        leading: Icon(icon, color: const Color(0xFF335C80)),
-        title: Text(label),
-        subtitle: Text(value),
+  Widget build(BuildContext context) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            children: [
+              _row('Cod client', activity.clientCode),
+              _row('Contract', activity.contractNumber),
+              _row('Operatie', activity.operation),
+              _row('Alerta', activity.alert),
+              _row('Email', activity.email),
+              _row('Nr. Operatie', activity.id),
+              _row(
+                'Data Operatie',
+                activity.operationDate == null
+                    ? '-'
+                    : dmy(activity.operationDate!),
+              ),
+            ],
+          ),
+        ),
+      );
+
+  Widget _row(String label, String value) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 112,
+              child: Text(label, style: const TextStyle(color: Colors.black54)),
+            ),
+            Expanded(child: Text(value.trim().isEmpty ? '-' : value.trim())),
+          ],
+        ),
+      );
+}
+
+class _MessageCard extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  const _MessageCard({
+    required this.icon,
+    required this.text,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 48, color: const Color(0xFF335C80)),
+              const SizedBox(height: 12),
+              Text(text, textAlign: TextAlign.center),
+              if (actionLabel != null && onAction != null) ...[
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: onAction,
+                  icon: const Icon(Icons.refresh),
+                  label: Text(actionLabel!),
+                ),
+              ],
+            ],
+          ),
+        ),
       );
 }

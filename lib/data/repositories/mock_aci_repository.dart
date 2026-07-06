@@ -7,10 +7,12 @@
 // ===========================================================================
 
 import '../models/account.dart';
+import '../models/account_activity.dart';
 import '../models/consumption_point.dart';
 import '../models/consumption_record.dart';
 import '../models/invoice.dart';
 import '../models/meter_index.dart';
+import '../models/payment_record.dart';
 import 'aci_repository.dart';
 
 class MockACIRepository implements ACIRepository {
@@ -23,6 +25,44 @@ class MockACIRepository implements ACIRepository {
       address: 'Str. Exemplu nr. 10, Otopeni, Ilfov',
       balance: -87.50,
     );
+  }
+
+  @override
+  Future<List<AccountActivity>> getAccountActivities({
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    final now = DateTime.now();
+    return [
+      AccountActivity(
+        id: '101',
+        clientCode: 'ACI-123456',
+        contractNumber: '20',
+        operation: 'Inregistrare index',
+        alert: '',
+        email: '',
+        operationDate: now.subtract(const Duration(days: 8)),
+      ),
+      AccountActivity(
+        id: '100',
+        clientCode: 'ACI-123456',
+        contractNumber: '20',
+        operation: 'Trimitere mesaj companie',
+        alert: '',
+        email: 'client@example.com',
+        operationDate: now.subtract(const Duration(days: 18)),
+      ),
+      AccountActivity(
+        id: '99',
+        clientCode: 'ACI-123456',
+        contractNumber: '20',
+        operation: 'Activare factura pe email',
+        alert: '',
+        email: 'client@example.com',
+        operationDate: now.subtract(const Duration(days: 40)),
+      ),
+    ];
   }
 
   @override
@@ -53,6 +93,23 @@ class MockACIRepository implements ACIRepository {
         dueDate: now.subtract(const Duration(days: 50)),
         amount: 79.10,
         paid: true,
+      ),
+    ];
+  }
+
+  @override
+  Future<List<PaymentRecord>> getPayments({
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return [
+      PaymentRecord(
+        id: '1',
+        paymentDate: DateTime.now().subtract(const Duration(days: 20)),
+        amount: 92.30,
+        document: 'OP-2026-000101',
+        method: 'Online',
       ),
     ];
   }

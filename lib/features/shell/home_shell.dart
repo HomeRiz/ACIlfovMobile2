@@ -19,10 +19,13 @@ import '../../state/account_provider.dart';
 import '../../state/auth_provider.dart';
 import '../accessibility/accessibility_sheet.dart';
 import '../account_info/account_info_view.dart';
-import '../alerts/alerts_view.dart';
+import '../account_info/delete_account_view.dart';
+import '../auth/change_password_view.dart';
+import '../consumption/consumption_chart_view.dart';
 import '../consumption/consumption_view.dart';
 import '../dashboard/home_view.dart';
 import '../index/index_view.dart';
+import '../info/info_view.dart';
 import '../invoices/invoices_view.dart';
 import '../message/send_message_view.dart';
 import '../payments/payments_view.dart';
@@ -36,16 +39,45 @@ typedef _MenuEntry = ({ShellPage page, IconData icon, String label});
 // Lista completa a meniului, in ordinea de afisare.
 const List<_MenuEntry> _menu = [
   (page: ShellPage.home, icon: Icons.home, label: 'Acasa'),
-  (page: ShellPage.invoices, icon: Icons.receipt_long, label: 'Istoric facturi'),
+  (
+    page: ShellPage.invoices,
+    icon: Icons.receipt_long,
+    label: 'Istoric facturi'
+  ),
   (page: ShellPage.indexPage, icon: Icons.speed, label: 'Transmitere index'),
-  (page: ShellPage.consumption, icon: Icons.show_chart, label: 'Istoric consum'),
   (page: ShellPage.payments, icon: Icons.payments, label: 'Istoric plati'),
-  (page: ShellPage.alerts, icon: Icons.notifications_active, label: 'Alerte si notificari'),
-  (page: ShellPage.updateData, icon: Icons.edit_note, label: 'Actualizare date cont'),
-  (page: ShellPage.sendMessage, icon: Icons.mail_outline, label: 'Trimitere mesaj'),
-  (page: ShellPage.accountInfo, icon: Icons.info_outline, label: 'Informatii cont si contact'),
+  (
+    page: ShellPage.consumption,
+    icon: Icons.show_chart,
+    label: 'Istoric consum'
+  ),
+  (page: ShellPage.chart, icon: Icons.bar_chart, label: 'Grafic'),
+  (
+    page: ShellPage.updateData,
+    icon: Icons.edit_note,
+    label: 'Actualizare date cont'
+  ),
   (page: ShellPage.settings, icon: Icons.settings, label: 'Configurari'),
+  (
+    page: ShellPage.changePassword,
+    icon: Icons.lock_reset,
+    label: 'Schimbare parola'
+  ),
+  (page: ShellPage.contact, icon: Icons.mail_outline, label: 'Contact'),
+  (
+    page: ShellPage.accountInfo,
+    icon: Icons.info_outline,
+    label: 'Informatii cont'
+  ),
+  (
+    page: ShellPage.deleteAccount,
+    icon: Icons.delete_forever,
+    label: 'Stergere cont'
+  ),
 ];
+
+const _MenuEntry _infoMenu =
+    (page: ShellPage.info, icon: Icons.info, label: 'Info');
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -68,8 +100,9 @@ class _HomeShellState extends State<HomeShell> {
 
   void _go(ShellPage p) => setState(() => _page = p);
 
-  String get _title =>
-      _menu.firstWhere((e) => e.page == _page).label;
+  String get _title => _page == _infoMenu.page
+      ? _infoMenu.label
+      : _menu.firstWhere((e) => e.page == _page).label;
 
   // Ce continut se afiseaza pentru pagina curenta (widget-uri fara bara proprie).
   Widget _bodyFor(ShellPage p) {
@@ -82,18 +115,24 @@ class _HomeShellState extends State<HomeShell> {
         return const IndexView();
       case ShellPage.consumption:
         return const ConsumptionView();
+      case ShellPage.chart:
+        return const ConsumptionChartView();
       case ShellPage.payments:
         return const PaymentsView();
-      case ShellPage.alerts:
-        return const AlertsView();
       case ShellPage.updateData:
         return const UpdateDataView();
-      case ShellPage.sendMessage:
+      case ShellPage.settings:
+        return const SettingsView();
+      case ShellPage.changePassword:
+        return const ChangePasswordView();
+      case ShellPage.contact:
         return const SendMessageView();
       case ShellPage.accountInfo:
         return const AccountInfoView();
-      case ShellPage.settings:
-        return const SettingsView();
+      case ShellPage.deleteAccount:
+        return const DeleteAccountView();
+      case ShellPage.info:
+        return const InfoView();
     }
   }
 
@@ -140,17 +179,9 @@ class _HomeShellState extends State<HomeShell> {
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
-                for (final e in _menu)
-                  ListTile(
-                    leading: Icon(e.icon),
-                    title: Text(e.label),
-                    selected: e.page == _page,
-                    selectedTileColor: const Color(0x11335C80),
-                    onTap: () {
-                      Navigator.pop(context); // inchide meniul
-                      _go(e.page);
-                    },
-                  ),
+                for (final e in _menu) _drawerTile(e),
+                const SizedBox(height: 12),
+                _drawerTile(_infoMenu),
               ],
             ),
           ),
@@ -167,6 +198,19 @@ class _HomeShellState extends State<HomeShell> {
           const SizedBox(height: 8),
         ],
       ),
+    );
+  }
+
+  Widget _drawerTile(_MenuEntry e) {
+    return ListTile(
+      leading: Icon(e.icon),
+      title: Text(e.label),
+      selected: e.page == _page,
+      selectedTileColor: const Color(0x11335C80),
+      onTap: () {
+        Navigator.pop(context); // inchide meniul
+        _go(e.page);
+      },
     );
   }
 }

@@ -2,7 +2,7 @@
 //  cookie_aci_repository.dart  =  SURSA "DATE REALE PRIN SESIUNE" (ACUM)
 // ---------------------------------------------------------------------------
 //  Aduce date REALE din portalul EMSYS (acilfov.emsys.ro) folosind sesiunea
-//  de dupa login (cookie-ul) + codul de client si numarul de contract din .env.
+//  de dupa login (cookie-ul) + identitatea contractului citita din portal.
 //  Este solutia de tranzitie pana cand ACIlfov publica un API oficial.
 //
 //  Endpoint-urile si forma raspunsurilor sunt aceleasi pe care le foloseste si
@@ -27,10 +27,12 @@ import 'dart:io' show HttpDate;
 
 import '../../core/config/app_config.dart';
 import '../models/account.dart';
+import '../models/account_activity.dart';
 import '../models/consumption_point.dart';
 import '../models/consumption_record.dart';
 import '../models/invoice.dart';
 import '../models/meter_index.dart';
+import '../models/payment_record.dart';
 import '../sources/portal_client.dart';
 import 'aci_repository.dart';
 
@@ -42,28 +44,24 @@ class CookieACIRepository implements ACIRepository {
   // ------------------------------------------------------------------ CONT
   @override
   Future<Account> getAccount() async {
-    final cod = _portal.requireCodClient();
+    final identity = await _portal.identity();
+    final cod = identity.codClient;
 
     // 1) Detalii contract (titular + adresa). GET, doar cookie.
     //    Raspunsul e o LISTA de contracte: [ { denClient, stareContract, ... } ]
     String holder = '';
     String address = '';
-    try {
-      final data = await _portal.getJson(AppConfig.emsysContract);
-      final row = _firstRow(data);
-      if (row != null) {
-        holder = _str(row, ['denClient', 'numeClient', 'titular', 'nume']) ?? '';
-        address = _str(row, [
-              'adrClient', // numele real din portal (confirmat)
-              'adresa',
-              'adresaConsum',
-              'adresaPunctConsum',
-              'adresaClient',
-            ]) ??
-            '';
-      }
-    } catch (_) {
-      // Fara detalii de contract -> pastram campurile goale, restul merge.
+    final row = identity.contractRow;
+    if (row != null) {
+      holder = _str(row, ['denClient', 'numeClient', 'titular', 'nume']) ?? '';
+      address = _str(row, [
+            'adrClient', // numele real din portal (confirmat)
+            'adresa',
+            'adresaConsum',
+            'adresaPunctConsum',
+            'adresaClient',
+          ]) ??
+          '';
     }
 
     // 2) Sold curent. GET -> intoarce un numar simplu ca text (ex: "87.5").
@@ -72,7 +70,7 @@ class CookieACIRepository implements ACIRepository {
     //    >>> De verificat semnul pe un cont real (o singura data). <<<
     double balance = 0;
     try {
-      final nr = _portal.nrContract;
+      final nr = identity.nrContract;
       final url = '${AppConfig.emsysSold}?codClient=$cod'
           '${nr != null ? '&nrContract=$nr' : ''}';
       final text = (await _portal.getText(url)).trim();
@@ -85,15 +83,50 @@ class CookieACIRepository implements ACIRepository {
     return Account(
       holderName: holder,
       clientCode: cod,
+      contractNumber: identity.nrContract,
       address: address,
       balance: balance,
     );
   }
 
+  // ---------------------------------------------------------- INFORMATII CONT
+  @override
+  Future<List<AccountActivity>> getAccountActivities({
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    final data = await _portal.informatiiContRecords(
+      startDate: start,
+      endDate: end,
+    );
+    final records = data['records'];
+    if (records is! List) return const [];
+
+    final activities = <AccountActivity>[];
+    for (var i = 0; i < records.length; i++) {
+      final rec = records[i];
+      final row = (rec is Map && rec['row'] is Map)
+          ? (rec['row'] as Map).cast<String, dynamic>()
+          : (rec is Map ? rec.cast<String, dynamic>() : null);
+      if (row == null) continue;
+
+      final operationCode = _str(row, ['operatie']) ?? '';
+      activities.add(AccountActivity(
+        id: _str(row, ['idOperatie', 'nrOperatie', 'id']) ?? '$i',
+        clientCode: _str(row, ['codClient', 'codclient']) ?? '',
+        contractNumber: _str(row, ['nrContract', 'nrcontract']) ?? '',
+        operation: _correspondentValue(data, 'operatie', operationCode),
+        alert: _str(row, ['alerta']) ?? '',
+        email: _str(row, ['email']) ?? '',
+        operationDate: _emsysDate(row['dataOperatie']),
+      ));
+    }
+    return activities;
+  }
+
   // -------------------------------------------------------------- FACTURI
   @override
   Future<List<Invoice>> getInvoices() async {
-    _portal.requireCodClient();
     final now = DateTime.now();
 
     // BEST-EFFORT: HA nu expune o lista de facturi. Incercam endpoint-ul
@@ -158,10 +191,69 @@ class CookieACIRepository implements ACIRepository {
     }
   }
 
+  // ------------------------------------------------------------------ PLATI
+  @override
+  Future<List<PaymentRecord>> getPayments({
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    try {
+      final data = await _portal.postRecords(
+        AppConfig.emsysPlati,
+        startDate: start,
+        endDate: end,
+        payloadExtra: {r'$order': 'DATA_PLATA desc'},
+      );
+      final records = data['records'];
+      if (records is! List) return const [];
+
+      final payments = <PaymentRecord>[];
+      for (var i = 0; i < records.length; i++) {
+        final rec = records[i];
+        final row = (rec is Map && rec['row'] is Map)
+            ? (rec['row'] as Map).cast<String, dynamic>()
+            : (rec is Map ? rec.cast<String, dynamic>() : null);
+        if (row == null) continue;
+        payments.add(PaymentRecord(
+          id: '$i',
+          paymentDate:
+              _emsysDate(row['dataPlata']) ?? _emsysDate(row['dataOperatie']),
+          amount: _double(row, [
+                'valoarePlata',
+                'sumaPlata',
+                'valoare',
+                'suma',
+                'total',
+              ]) ??
+              0,
+          document: _str(row, [
+                'nrDocument',
+                'numarDocument',
+                'document',
+                'chitanta',
+                'nrChitanta',
+                'ordinPlata',
+              ]) ??
+              '',
+          method: _str(row, [
+                'modalitatePlata',
+                'tipPlata',
+                'metodaPlata',
+                'canalPlata',
+              ]) ??
+              '',
+        ));
+      }
+      return payments;
+    } catch (_) {
+      return const [];
+    }
+  }
+
   // ----------------------------------------------------------------- INDEX
   @override
   Future<MeterIndex> getMeterIndex() async {
-    final cod = _portal.requireCodClient();
+    final cod = await _portal.requireCodClient();
     final now = DateTime.now();
 
     // 1) Ziua de start a perioadei de transmitere (verificaPerioada). La ACIlfov
@@ -216,7 +308,8 @@ class CookieACIRepository implements ACIRepository {
   // -------------------------------------------------- TRANSMITERE (SCRIERE)
   @override
   Future<void> submitMeterIndex(int value) async {
-    final cod = _portal.requireCodClient();
+    final identity = await _portal.identity();
+    final cod = identity.codClient;
     final now = DateTime.now();
 
     // BEST-EFFORT / DE VERIFICAT:
@@ -235,7 +328,7 @@ class CookieACIRepository implements ACIRepository {
       payloadExtra: {
         r'$action': 'SAVE_RECORDS',
         'codClient': cod,
-        if (_portal.nrContract != null) 'nrContract': _portal.nrContract!,
+        if (identity.nrContract != null) 'nrContract': identity.nrContract!,
         'indexNou': '$value',
         'verificareIndex': '$value',
       },
@@ -245,8 +338,9 @@ class CookieACIRepository implements ACIRepository {
   // -------------------------------------------------------- PUNCTE CONSUM
   @override
   Future<List<ConsumptionPoint>> getConsumptionPoints() async {
-    final cod = _portal.requireCodClient();
-    final nr = _portal.nrContract;
+    final identity = await _portal.identity();
+    final cod = identity.codClient;
+    final nr = identity.nrContract;
     final url = '${AppConfig.emsysPuncteConsum}?codClient=$cod'
         '${nr != null ? '&nrContract=$nr' : ''}';
 
@@ -278,10 +372,7 @@ class CookieACIRepository implements ACIRepository {
       final data = await _portal.getJson(
           '${AppConfig.emsysContoare}?idLocatie=$idLocatie&startDate=$startParam');
       if (data is List) {
-        return data
-            .map((e) => '$e'.trim())
-            .where((s) => s.isNotEmpty)
-            .toList();
+        return data.map((e) => '$e'.trim()).where((s) => s.isNotEmpty).toList();
       }
     } catch (_) {
       // fara contoare -> lista goala
@@ -307,7 +398,6 @@ class CookieACIRepository implements ACIRepository {
     required DateTime start,
     required DateTime end,
   }) async {
-    _portal.requireCodClient();
     final data = await _portal.consumRecords(
       idLocatie: idLocatie,
       contor: contor,
@@ -340,16 +430,6 @@ class CookieACIRepository implements ACIRepository {
   // ======================================================================
   //  Ajutoare de mapare (defensive: tolereaza campuri lipsa / tipuri diferite)
   // ======================================================================
-
-  // Primul element dintr-un raspuns tip lista ([{...}]) sau un Map simplu.
-  Map<String, dynamic>? _firstRow(dynamic data) {
-    if (data is List && data.isNotEmpty && data.first is Map) {
-      return (data.first as Map).cast<String, dynamic>();
-    }
-    if (data is Map<String, dynamic>) return data;
-    if (data is Map) return data.cast<String, dynamic>();
-    return null;
-  }
 
   // Primul camp ne-gol dintr-o lista de nume posibile.
   String? _str(Map<String, dynamic> row, List<String> keys) {
@@ -384,6 +464,48 @@ class CookieACIRepository implements ACIRepository {
       }
     }
     return null;
+  }
+
+  // EMSYS trimite uneori coduri in row si dictionare de afisare in items.
+  String _correspondentValue(
+    Map<String, dynamic> data,
+    String itemName,
+    String value,
+  ) {
+    if (value.isEmpty) return '';
+    final items = data['items'];
+    final source = items is Map ? items[itemName] : null;
+    if (source is List) {
+      for (final item in source) {
+        if (item is! Map) continue;
+        final row = item.cast<String, dynamic>();
+        final key = _str(row, [
+          'key',
+          'value',
+          'cod',
+          'code',
+          'id',
+          'name',
+        ]);
+        if (key != value) continue;
+        return _str(row, [
+              'text',
+              'label',
+              'descriere',
+              'description',
+              'name',
+              'value',
+            ]) ??
+            value;
+      }
+    }
+    if (source is Map) {
+      final mapped = source[value];
+      if (mapped != null && '$mapped'.trim().isNotEmpty) {
+        return '$mapped'.trim();
+      }
+    }
+    return value;
   }
 
   // Parseaza formatul EMSYS "/Date(1712345678000)/" (sau ISO) -> DateTime.

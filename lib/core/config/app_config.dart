@@ -30,10 +30,23 @@ class AppConfig {
 
   // Adresele portalului oficial ACIlfov (folosite de ecranul de login WebView
   // si de sursa "cookie").
-  static const String portalUrl =
-      'https://acilfov.emsys.ro/self_utilities/';
+  static const String portalUrl = 'https://acilfov.emsys.ro/self_utilities/';
   static const String authUrl =
       'https://acilfov.emsys.ro/self_utilities/oui/cl/index.html';
+
+  // Pagini publice oficiale ACIlfov, folosite in ecranul Info. Continutul este
+  // incarcat direct din sursa oficiala, ca sa ramana identic cu ACIlfov.ro.
+  static const String officialSiteUrl = 'https://acilfov.ro/';
+  static const String officialLicensingUrl =
+      'https://acilfov.ro/despre-noi/certificari-si-licentiere/';
+  static const String officialTermsUrl =
+      'https://acilfov.ro/termeni-si-conditii/';
+  static const String officialCookiePolicyUrl =
+      'https://acilfov.ro/politica-de-cookie/';
+  static const String officialGdprFormUrl =
+      'https://acilfov.ro/wp-content/uploads/2026/06/Formular-GDPR-AIF_23062026.pdf';
+  static const String officialCustomerPortalUrl =
+      'https://acilfov.emsys.ro/CUSTOMER_PORTAL/login.jsp';
 
   // ----------------------------------------------------------------------
   //  API-ul REST intern al portalului EMSYS (folosit de sursa "cookie").
@@ -66,6 +79,9 @@ class AppConfig {
       '$emsysRestBase/transmitere/Transmiteres';
   // Lista facturi (presupus dupa pattern-ul EMSYS; de verificat din Network).
   static const String emsysFacturi = '$emsysRestBase/facturi/Facturis';
+  // Informatii cont: istoricul operatiilor/cererilor pe cont.
+  static const String emsysInformatiiCont =
+      '$emsysRestBase/informatiiCont/InformatiiConts';
 
   // VIITOR: adresa de baza a API-ului ACIlfov (exemplu ipotetic).
   // Se completeaza cu adresa reala cand ACIlfov publica API-ul.

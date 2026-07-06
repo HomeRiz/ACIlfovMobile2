@@ -9,10 +9,12 @@
 // ===========================================================================
 
 import '../models/account.dart';
+import '../models/account_activity.dart';
 import '../models/consumption_point.dart';
 import '../models/consumption_record.dart';
 import '../models/invoice.dart';
 import '../models/meter_index.dart';
+import '../models/payment_record.dart';
 import '../sources/api_client.dart';
 import 'aci_repository.dart';
 
@@ -27,10 +29,28 @@ class ApiACIRepository implements ACIRepository {
   }
 
   @override
+  Future<List<AccountActivity>> getAccountActivities({
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    // TODO: cand exista API oficial, mapeaza raspunsul la AccountActivity.
+    return const [];
+  }
+
+  @override
   Future<List<Invoice>> getInvoices() async {
     final json = await _api.getJson('/invoices'); // TODO: calea reala
     final list = (json['items'] as List).cast<Map<String, dynamic>>();
     return list.map(Invoice.fromJson).toList();
+  }
+
+  @override
+  Future<List<PaymentRecord>> getPayments({
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    // TODO: cand exista API oficial, mapeaza raspunsul la PaymentRecord.
+    return const [];
   }
 
   @override

@@ -15,7 +15,6 @@
 // ===========================================================================
 
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 
 import 'app.dart';
@@ -29,14 +28,6 @@ import 'state/auth_provider.dart';
 Future<void> main() async {
   // Necesare inainte de a folosi pluginuri (notificari) la pornire.
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Incarcam .env (optional): daca exista un cookie real, il putem folosi
-  // pentru testare cu cont real (vezi handoff.md / .env.example).
-  try {
-    await dotenv.load(fileName: '.env');
-  } catch (_) {
-    // .env lipseste sau e gol - aplicatia merge normal (mock / login).
-  }
 
   // Pornim serviciul de notificari locale (cere permisiunile la nevoie).
   await NotificationService.instance.init();

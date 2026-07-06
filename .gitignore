@@ -17,18 +17,27 @@ android/local.properties
 android/key.properties
 *.keystore
 *.jks
+**/*.p12
+**/*.pem
+**/*.mobileprovision
+**/*.cer
 
 # iOS
 ios/Pods/
 ios/.symlinks/
 ios/Flutter/Flutter.framework/
 ios/Flutter/Flutter.podspec
+ios/build/
+**/xcuserdata/
+**/*.xcuserstate
 
 # Diverse
 *.log
 .DS_Store
+**/.env
+**/.env.*
+*.env
+*.private.md
+*.personal.md
 
-# Secrete locale (cookie de testare) - NU se urca in git.
-# .env.example ramane in git ca sablon.
-.env
 handoff.md

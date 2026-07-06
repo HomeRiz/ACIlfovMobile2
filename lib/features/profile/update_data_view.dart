@@ -2,7 +2,8 @@
 //  update_data_view.dart  =  PAGINA "ACTUALIZARE DATE CONT"
 // ---------------------------------------------------------------------------
 //  Ca pe portalul oficial: o LISTA de coduri de client, fiecare cu numele,
-//  adresa si contractele asociate. Fiecare rand are o bifa (checkbox).
+//  adresa si contractele asociate, daca portalul le ofera. Fiecare rand are o
+//  bifa (checkbox).
 //
 //  Bara de jos are trei actiuni:
 //   - Sterge      -> sterge randurile bifate
@@ -52,11 +53,12 @@ class _UpdateDataViewState extends State<UpdateDataView> {
     if (_seeded) return;
     final acc = p.account;
     if (acc != null) {
+      final contract = acc.contractNumber?.trim();
       _accounts.add(_LinkedAccount(
         codClient: acc.clientCode,
         numeClient: acc.holderName,
         adresa: acc.address,
-        contracte: ['C-0001'],
+        contracte: contract == null || contract.isEmpty ? const [] : [contract],
       ));
       _seeded = true;
     }
@@ -110,13 +112,8 @@ class _UpdateDataViewState extends State<UpdateDataView> {
                         Text('Nume: ${a.numeClient}'),
                         Text('Adresa: ${a.adresa}',
                             style: const TextStyle(color: Colors.black54)),
-                        const SizedBox(height: 8),
-                        if (a.contracte.isEmpty)
-                          const Text('Fara contracte',
-                              style: TextStyle(
-                                  color: Colors.black45,
-                                  fontStyle: FontStyle.italic))
-                        else
+                        if (a.contracte.isNotEmpty) ...[
+                          const SizedBox(height: 8),
                           Wrap(
                             spacing: 6,
                             runSpacing: 6,
@@ -130,6 +127,7 @@ class _UpdateDataViewState extends State<UpdateDataView> {
                                 ),
                             ],
                           ),
+                        ],
                       ],
                     ),
                   ),
@@ -341,7 +339,6 @@ class _UpdateDataViewState extends State<UpdateDataView> {
   }
 
   void _snack(String msg) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 }

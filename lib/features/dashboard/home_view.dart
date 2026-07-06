@@ -1,8 +1,7 @@
 // ===========================================================================
 //  home_view.dart  =  PAGINA "ACASA" (sold + dale de actiuni)
 // ---------------------------------------------------------------------------
-//  Afiseaza soldul curent si dalele: Transmitere index, Alerte si notificari,
-//  Actualizare date cont, Trimitere mesaj. Fiecare dala comuta pe pagina
+//  Afiseaza soldul curent si dalele rapide din portal. Fiecare dala comuta pe pagina
 //  corespunzatoare din meniu (prin functia onNavigate).
 // ===========================================================================
 
@@ -41,11 +40,11 @@ class HomeView extends StatelessWidget {
                   _tile(Icons.speed, 'Transmitere index',
                       () => onNavigate(ShellPage.indexPage)),
                   _tile(Icons.notifications_active, 'Alerte si notificari',
-                      () => onNavigate(ShellPage.alerts)),
+                      () => onNavigate(ShellPage.settings)),
                   _tile(Icons.edit_note, 'Actualizare date',
                       () => onNavigate(ShellPage.updateData)),
-                  _tile(Icons.mail_outline, 'Trimitere mesaj',
-                      () => onNavigate(ShellPage.sendMessage)),
+                  _tile(Icons.mail_outline, 'Trimite mesaj',
+                      () => onNavigate(ShellPage.contact)),
                 ],
               ),
             ],

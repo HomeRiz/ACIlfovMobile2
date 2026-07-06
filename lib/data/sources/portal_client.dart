@@ -2,7 +2,7 @@
 //  portal_client.dart  =  CLIENT HTTP CARE FOLOSESTE SESIUNEA DE LOGIN
 // ---------------------------------------------------------------------------
 //  Cere date din portalul EMSYS (acilfov.emsys.ro) trimitand cookie-ul de
-//  sesiune (obtinut dupa ce te-ai logat in WebView, sau pus manual in .env).
+//  sesiune obtinut dupa ce te-ai logat in WebView.
 //  Practic, "vorbeste" cu portalul ca si cum ai fi tu logat in browser.
 //
 //  Modeleaza exact stilul cererilor pe care le foloseste si integrarea
@@ -17,48 +17,87 @@
 import 'dart:convert';
 import 'dart:io' show HttpDate;
 
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 import '../../core/config/app_config.dart';
 import '../cookie_store.dart';
 
+class PortalIdentity {
+  final String codClient;
+  final String? nrContract;
+  final Map<String, dynamic>? contractRow;
+
+  const PortalIdentity({
+    required this.codClient,
+    required this.nrContract,
+    required this.contractRow,
+  });
+}
+
 class PortalClient {
   final http.Client _http;
+  PortalIdentity? _identity;
+
   PortalClient({http.Client? client}) : _http = client ?? http.Client();
 
   // ------------------------------------------------------------- identitate
-  // Codul de client si numarul de contract, citite din .env (ca in addonul HA).
-  // Multe endpoint-uri au nevoie de ele pe langa cookie.
-  String? get codClient {
-    final v = dotenv.maybeGet('ACI_COD_CLIENT');
-    return (v != null && v.trim().isNotEmpty) ? v.trim() : null;
-  }
+  // Codul de client si numarul de contract sunt citite din sesiunea portalului,
+  // dupa login, prin endpoint-ul de contract. Multe endpoint-uri au nevoie de
+  // ele pe langa cookie.
+  Future<PortalIdentity> identity() async {
+    final cached = _identity;
+    if (cached != null) return cached;
 
-  String? get nrContract {
-    final v = dotenv.maybeGet('ACI_NR_CONTRACT');
-    return (v != null && v.trim().isNotEmpty) ? v.trim() : null;
-  }
+    final data = await getJson(AppConfig.emsysContract);
+    final row = _firstRow(data);
+    final cod = row == null
+        ? null
+        : _str(row, [
+            'codClient',
+            'codclient',
+            'cod_client',
+            'clientCode',
+            'codCli',
+            'cod',
+            'idClient',
+          ]);
+    final nr = row == null
+        ? null
+        : _str(row, [
+            'nrContract',
+            'nrcontract',
+            'nr_contract',
+            'numarContract',
+            'numar_contract',
+            'contract',
+            'codContract',
+          ]);
 
-  // Verifica faptul ca avem cod client (mesaj clar daca lipseste din .env).
-  String requireCodClient() {
-    final c = codClient;
-    if (c == null) {
+    if (cod == null) {
       throw StateError(
-          'Lipseste ACI_COD_CLIENT din .env. Completeaza-l (vezi .env / handoff.md).');
+        'Nu pot identifica codul de client din sesiunea portalului. '
+        'Logheaza-te din nou in portal; daca eroarea ramane, trebuie verificat '
+        'raspunsul endpoint-ului de contract.',
+      );
     }
-    return c;
+
+    return _identity = PortalIdentity(
+      codClient: cod,
+      nrContract: nr,
+      contractRow: row,
+    );
   }
+
+  Future<String> requireCodClient() async => (await identity()).codClient;
 
   // ---------------------------------------------------------------- sesiune
-  // Cookie-ul de sesiune: intai din .env (testare), altfel din login (WebView).
+  // Cookie-ul de sesiune este citit din magazinul nativ WebView.
   Future<String> _cookie() async {
-    final envCookie = dotenv.maybeGet('ACI_SESSION_COOKIE');
-    final cookie = (envCookie != null && envCookie.isNotEmpty)
-        ? envCookie
-        : await CookieStore.currentHeader(AppConfig.portalUrl);
+    final cookie = await CookieStore.currentHeader(AppConfig.portalUrl);
     if (cookie == null || cookie.isEmpty) {
-      throw StateError('Nu exista sesiune (nici in .env, nici din login).');
+      throw StateError(
+        'Nu exista sesiune activa. Logheaza-te in portal din ecranul de autentificare.',
+      );
     }
     return cookie;
   }
@@ -104,10 +143,11 @@ class PortalClient {
     required DateTime endDate,
     Map<String, String>? payloadExtra,
   }) async {
+    final id = await identity();
     final headers = await _headers({
       'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-      'codclient': requireCodClient(),
-      if (nrContract != null) 'nrcontract': nrContract!,
+      'codclient': id.codClient,
+      if (id.nrContract != null) 'nrcontract': id.nrContract!,
       'startdate': HttpDate.format(startDate.toUtc()),
       'enddate': HttpDate.format(endDate.toUtc()),
     });
@@ -143,14 +183,15 @@ class PortalClient {
     required DateTime startDate,
     required DateTime endDate,
   }) async {
+    final id = await identity();
     final headers = await _headers({
       'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
       'startDate': HttpDate.format(startDate.toUtc()),
       'endDate': HttpDate.format(endDate.toUtc()),
       'locatie': idLocatie,
       'contor': contor,
-      'codClient': requireCodClient(),
-      if (nrContract != null) 'nrContract': nrContract!,
+      'codClient': id.codClient,
+      if (id.nrContract != null) 'nrContract': id.nrContract!,
       'OUI_REQ': 'true',
     });
     final payload = <String, String>{
@@ -171,5 +212,58 @@ class PortalClient {
     }
     final decoded = res.body.isEmpty ? null : jsonDecode(res.body);
     return decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+  }
+
+  // POST specific pentru pagina "Informatii cont".
+  // Confirmat din bundle-ul portalului:
+  // controller InformatiiCont -> /rest/self/informatiiCont/InformatiiConts,
+  // headere camelCase startDate/endDate si sortare DATA_OPERATIE desc.
+  Future<Map<String, dynamic>> informatiiContRecords({
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    final headers = await _headers({
+      'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+      'startDate': HttpDate.format(startDate.toUtc()),
+      'endDate': HttpDate.format(endDate.toUtc()),
+      'OUI_REQ': 'true',
+    });
+    final payload = <String, String>{
+      r'$qd': 'false',
+      r'$action': 'LOAD_RECORDS',
+      r'$locale': 'en',
+      r'$ls': 'false',
+      r'$to': '500',
+      r'$order': 'DATA_OPERATIE desc',
+    };
+    final res = await _http.post(
+      Uri.parse(AppConfig.emsysInformatiiCont),
+      headers: headers,
+      body: payload,
+    );
+    if (res.statusCode != 200) {
+      throw Exception(
+        'Portalul a raspuns cu ${res.statusCode} la informatii cont',
+      );
+    }
+    final decoded = res.body.isEmpty ? null : jsonDecode(res.body);
+    return decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+  }
+
+  Map<String, dynamic>? _firstRow(dynamic data) {
+    if (data is List && data.isNotEmpty && data.first is Map) {
+      return (data.first as Map).cast<String, dynamic>();
+    }
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return data.cast<String, dynamic>();
+    return null;
+  }
+
+  String? _str(Map<String, dynamic> row, List<String> keys) {
+    for (final k in keys) {
+      final v = row[k];
+      if (v != null && '$v'.trim().isNotEmpty) return '$v'.trim();
+    }
+    return null;
   }
 }

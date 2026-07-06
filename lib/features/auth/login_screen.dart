@@ -6,8 +6,6 @@
 //  ajungem in zona autentificata a portalului, aplicatia trece automat la
 //  ecranele native (HomeShell), iar sesiunea (cookie-ul) ramane salvata.
 //
-//  DEMO: in modul debug, butonul din bara de sus sare peste login si intra
-//  direct in aplicatia nativa cu date de test - util ca sa vezi interfata.
 // ===========================================================================
 
 import 'dart:async';
@@ -152,15 +150,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       appBar: AppBar(
         title: Image.asset('assets/logo.png', height: 36),
         backgroundColor: const Color(0xFF335C80),
-        actions: [
-          // Buton DEMO doar in modul debug: intra direct in aplicatia nativa.
-          if (kDebugMode)
-            IconButton(
-              tooltip: 'Demo (fara login)',
-              icon: const Icon(Icons.login),
-              onPressed: () => context.read<AuthProvider>().markLoggedIn(),
-            ),
-        ],
       ),
       body: Stack(
         children: [

@@ -14,15 +14,25 @@
 // ===========================================================================
 
 import '../models/account.dart';
+import '../models/account_activity.dart';
 import '../models/consumption_point.dart';
 import '../models/consumption_record.dart';
 import '../models/invoice.dart';
 import '../models/meter_index.dart';
+import '../models/payment_record.dart';
 
 abstract class ACIRepository {
-  Future<Account> getAccount();          // datele contului
-  Future<List<Invoice>> getInvoices();   // lista de facturi
-  Future<MeterIndex> getMeterIndex();    // indexul + perioada de transmitere
+  Future<Account> getAccount(); // datele contului
+  Future<List<Invoice>> getInvoices(); // lista de facturi
+  Future<List<AccountActivity>> getAccountActivities({
+    required DateTime start,
+    required DateTime end,
+  }); // informatii cont / istoric operatii
+  Future<List<PaymentRecord>> getPayments({
+    required DateTime start,
+    required DateTime end,
+  }); // istoricul platilor
+  Future<MeterIndex> getMeterIndex(); // indexul + perioada de transmitere
   Future<void> submitMeterIndex(int value); // trimite un index nou
 
   // Punctele de consum (locatii + contoare) ale clientului.

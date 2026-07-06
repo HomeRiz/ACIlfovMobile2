@@ -11,10 +11,13 @@ enum ShellPage {
   invoices, // Istoric facturi
   indexPage, // Transmitere index
   consumption, // Istoric consum
+  chart, // Grafic consum
   payments, // Istoric plati
-  alerts, // Alerte si notificari (+ factura electronica)
   updateData, // Actualizare date cont
-  sendMessage, // Trimitere mesaj
-  accountInfo, // Informatii cont si contact
   settings, // Configurari
+  changePassword, // Schimbare parola
+  contact, // Contact / trimitere mesaj
+  accountInfo, // Informatii cont
+  deleteAccount, // Stergere cont
+  info, // Info
 }
