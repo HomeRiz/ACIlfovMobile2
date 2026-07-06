@@ -74,14 +74,59 @@ class AppConfig {
   static const String emsysContoare = '$emsysRestBase/consum/getContoare';
   // Istoric plati. POST (pattern EMSYS LOAD_RECORDS).
   static const String emsysPlati = '$emsysRestBase/plati/Platis';
-  // Transmitere index (scriere). POST — payload de verificat din Network tab.
+  // Transmitere index (lista contoare pentru pagina de transmitere).
   static const String emsysTransmitere =
       '$emsysRestBase/transmitere/Transmiteres';
-  // Lista facturi (presupus dupa pattern-ul EMSYS; de verificat din Network).
+  // Lista facturi, confirmata din controllerul portalului.
   static const String emsysFacturi = '$emsysRestBase/facturi/Facturis';
   // Informatii cont: istoricul operatiilor/cererilor pe cont.
   static const String emsysInformatiiCont =
       '$emsysRestBase/informatiiCont/InformatiiConts';
+  // Contact / trimitere mesaj companie.
+  static const String emsysContactCodClients =
+      '$emsysRestBase/contact/codClients';
+  static const String emsysContactMessageLength =
+      '$emsysRestBase/contact/getLungimeMesaj';
+  static const String emsysContactMotives = '$emsysRestBase/contact/motives';
+  static const String emsysContactSubjects = '$emsysRestBase/contact/subiectes';
+  static const String emsysContactSend = '$emsysRestBase/contact/sendMessage';
+  static const String emsysInfoSession = '$emsysRestBase/infoSession';
+  // Utilizator portal.
+  static const String emsysChangePassword =
+      '$emsysRestBase/portaluserobj/changePassword';
+  static const String emsysDeleteAccount =
+      '$emsysRestBase/portaluserobj/stergereCont';
+  // Actualizare date cont / contracte.
+  static const String emsysAddClientContract =
+      '$emsysRestBase/contract/addClientContract';
+  static const String emsysAddContract = '$emsysRestBase/contract/addContract';
+  static const String emsysDeleteClientCode =
+      '$emsysRestBase/contract/deleteCodClient';
+  static const String emsysClientCodesWithoutContracts =
+      '$emsysRestBase/contract/getListaCodClientCuContracteNeintroduse';
+  static const String emsysContractsWithoutClient =
+      '$emsysRestBase/contract/getListaContracteNeintroduse';
+  // Configurari factura electronica si alerte.
+  static const String emsysConfiguriBase = '$emsysRestBase/cofiguri';
+  static const String emsysInvoiceDeliveryConfigs =
+      '$emsysConfiguriBase/Configuris';
+  static const String emsysActivateInvoiceDelivery =
+      '$emsysConfiguriBase/activare';
+  static const String emsysDeactivateInvoiceDelivery =
+      '$emsysConfiguriBase/dialogDezactiveaza';
+  static const String emsysSmsConfig = '$emsysConfiguriBase/smsConfig';
+  static const String emsysAlertConfigs =
+      '$emsysRestBase/configAlerte/ConfigAlertes';
+  static const String emsysAlertConfig =
+      '$emsysRestBase/configAlerte/ConfigAlerte';
+  static const String emsysCompanyNotifications =
+      '$emsysRestBase/configAlerte/primireNotif';
+  static const String emsysModifyCompanyNotifications =
+      '$emsysRestBase/configAlerte/modifyPrimireNotif';
+  // Transmitere index (scriere confirmata din controllerul portalului).
+  static const String emsysTransmiterePuncte =
+      '$emsysRestBase/transmitere/puncteConsums';
+  static const String emsysTransmitereAdd = '$emsysRestBase/transmitere/add';
 
   // VIITOR: adresa de baza a API-ului ACIlfov (exemplu ipotetic).
   // Se completeaza cu adresa reala cand ACIlfov publica API-ul.

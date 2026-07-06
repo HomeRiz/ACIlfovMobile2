@@ -117,5 +117,5 @@ docs/
 
 ## Licentiere / confidentialitate
 
-Proiect privat. A se vedea regulile de confidentialitate ale proiectului
-(identitate HomeRiz, fara date personale in istoricul repo-ului).
+Proiect privat HomeRiz. A se vedea regulile de confidentialitate ale
+proiectului: fara date personale in istoricul repo-ului.

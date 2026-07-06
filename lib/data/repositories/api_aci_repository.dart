@@ -10,11 +10,14 @@
 
 import '../models/account.dart';
 import '../models/account_activity.dart';
+import '../models/contact_option.dart';
 import '../models/consumption_point.dart';
 import '../models/consumption_record.dart';
 import '../models/invoice.dart';
+import '../models/linked_account.dart';
 import '../models/meter_index.dart';
 import '../models/payment_record.dart';
+import '../models/portal_config.dart';
 import '../sources/api_client.dart';
 import 'aci_repository.dart';
 
@@ -67,6 +70,115 @@ class ApiACIRepository implements ACIRepository {
       'index_nou': value,
       'verificare_index': value,
     }); // TODO: numele reale ale campurilor/caii
+  }
+
+  @override
+  Future<ContactOptions> getContactOptions() {
+    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+  }
+
+  @override
+  Future<void> sendContactMessage({
+    required String clientCode,
+    required ContactOption motive,
+    required ContactOption subject,
+    required String contactMethod,
+    required String contactValue,
+    required String message,
+  }) {
+    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+  }
+
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+  }
+
+  @override
+  Future<void> deletePortalAccount() {
+    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+  }
+
+  @override
+  Future<List<LinkedAccount>> getLinkedAccounts() {
+    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+  }
+
+  @override
+  Future<void> addClientContract({
+    required String clientCode,
+    required String contractNumber,
+  }) {
+    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+  }
+
+  @override
+  Future<List<String>> getClientCodesWithoutContracts() {
+    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+  }
+
+  @override
+  Future<List<String>> getContractsWithoutClient(String clientCode) {
+    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+  }
+
+  @override
+  Future<void> addContract({
+    required String clientCode,
+    required String contractNumber,
+  }) {
+    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+  }
+
+  @override
+  Future<void> deleteClientCodes(List<String> clientCodes) {
+    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+  }
+
+  @override
+  Future<List<InvoiceDeliveryConfig>> getInvoiceDeliveryConfigs(String mode) {
+    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+  }
+
+  @override
+  Future<void> activateInvoiceDelivery({
+    required String mode,
+    required String destination,
+  }) {
+    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+  }
+
+  @override
+  Future<void> deactivateInvoiceDelivery({
+    required String mode,
+    required InvoiceDeliveryConfig config,
+  }) {
+    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+  }
+
+  @override
+  Future<List<AlertConfig>> getAlertConfigs() {
+    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+  }
+
+  @override
+  Future<void> saveAlertConfig(AlertConfig config) {
+    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+  }
+
+  @override
+  Future<CompanyNotificationConfig> getCompanyNotificationConfig() {
+    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+  }
+
+  @override
+  Future<void> saveCompanyNotificationConfig(
+    CompanyNotificationConfig config,
+  ) {
+    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
   }
 
   @override

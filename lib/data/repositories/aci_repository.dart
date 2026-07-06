@@ -15,11 +15,14 @@
 
 import '../models/account.dart';
 import '../models/account_activity.dart';
+import '../models/contact_option.dart';
 import '../models/consumption_point.dart';
 import '../models/consumption_record.dart';
 import '../models/invoice.dart';
+import '../models/linked_account.dart';
 import '../models/meter_index.dart';
 import '../models/payment_record.dart';
+import '../models/portal_config.dart';
 
 abstract class ACIRepository {
   Future<Account> getAccount(); // datele contului
@@ -34,6 +37,49 @@ abstract class ACIRepository {
   }); // istoricul platilor
   Future<MeterIndex> getMeterIndex(); // indexul + perioada de transmitere
   Future<void> submitMeterIndex(int value); // trimite un index nou
+
+  Future<ContactOptions> getContactOptions();
+  Future<void> sendContactMessage({
+    required String clientCode,
+    required ContactOption motive,
+    required ContactOption subject,
+    required String contactMethod,
+    required String contactValue,
+    required String message,
+  });
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
+  Future<void> deletePortalAccount();
+
+  Future<List<LinkedAccount>> getLinkedAccounts();
+  Future<void> addClientContract({
+    required String clientCode,
+    required String contractNumber,
+  });
+  Future<List<String>> getClientCodesWithoutContracts();
+  Future<List<String>> getContractsWithoutClient(String clientCode);
+  Future<void> addContract({
+    required String clientCode,
+    required String contractNumber,
+  });
+  Future<void> deleteClientCodes(List<String> clientCodes);
+
+  Future<List<InvoiceDeliveryConfig>> getInvoiceDeliveryConfigs(String mode);
+  Future<void> activateInvoiceDelivery({
+    required String mode,
+    required String destination,
+  });
+  Future<void> deactivateInvoiceDelivery({
+    required String mode,
+    required InvoiceDeliveryConfig config,
+  });
+  Future<List<AlertConfig>> getAlertConfigs();
+  Future<void> saveAlertConfig(AlertConfig config);
+  Future<CompanyNotificationConfig> getCompanyNotificationConfig();
+  Future<void> saveCompanyNotificationConfig(CompanyNotificationConfig config);
 
   // Punctele de consum (locatii + contoare) ale clientului.
   Future<List<ConsumptionPoint>> getConsumptionPoints();

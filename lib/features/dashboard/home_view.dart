@@ -39,7 +39,7 @@ class HomeView extends StatelessWidget {
                 children: [
                   _tile(Icons.speed, 'Transmitere index',
                       () => onNavigate(ShellPage.indexPage)),
-                  _tile(Icons.notifications_active, 'Alerte si notificari',
+                  _tile(Icons.notifications_active, 'Notificari aplicatie',
                       () => onNavigate(ShellPage.settings)),
                   _tile(Icons.edit_note, 'Actualizare date',
                       () => onNavigate(ShellPage.updateData)),

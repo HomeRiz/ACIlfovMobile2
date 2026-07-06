@@ -134,6 +134,91 @@ class PortalClient {
   Future<String> fetch(String url) => getText(url);
 
   // ------------------------------------------------------------------ POST
+  Future<dynamic> postJson(
+    String url,
+    dynamic body, {
+    Map<String, String>? headersExtra,
+  }) async {
+    final res = await _http.post(
+      Uri.parse(url),
+      headers: await _headers({
+        'Content-Type': 'application/json',
+        ...?headersExtra,
+      }),
+      body: body is String ? body : jsonEncode(body),
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('Portalul a raspuns cu ${res.statusCode} la $url');
+    }
+    return _decodeBody(res.body);
+  }
+
+  Future<dynamic> deleteJson(
+    String url, {
+    Map<String, String>? headersExtra,
+  }) async {
+    final res = await _http.delete(
+      Uri.parse(url),
+      headers: await _headers({
+        'Content-Type': 'application/json',
+        ...?headersExtra,
+      }),
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('Portalul a raspuns cu ${res.statusCode} la $url');
+    }
+    return _decodeBody(res.body);
+  }
+
+  Future<Map<String, dynamic>> loadRecords(
+    String url, {
+    Map<String, String>? headersExtra,
+    Map<String, String>? payloadExtra,
+    int limit = 500,
+  }) async {
+    final headers = await _headers({
+      'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+      ...?headersExtra,
+    });
+    final payload = <String, String>{
+      r'$qd': 'false',
+      r'$action': 'LOAD_RECORDS',
+      r'$locale': 'en',
+      r'$ls': 'false',
+      r'$to': '$limit',
+      ...?payloadExtra,
+    };
+    final res = await _http.post(
+      Uri.parse(url),
+      headers: headers,
+      body: payload,
+    );
+    if (res.statusCode != 200) {
+      throw Exception('Portalul a raspuns cu ${res.statusCode} la $url');
+    }
+    final decoded = res.body.isEmpty ? null : jsonDecode(res.body);
+    return decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> facturiRecords({
+    required DateTime startDate,
+    required DateTime endDate,
+    bool unpaid = false,
+  }) async {
+    final id = await identity();
+    return loadRecords(
+      AppConfig.emsysFacturi,
+      headersExtra: {
+        'unpaid': '$unpaid',
+        'codClient': id.codClient,
+        if (id.nrContract != null) 'nrContract': id.nrContract!,
+        if (!unpaid) 'startDate': HttpDate.format(startDate.toUtc()),
+        if (!unpaid) 'endDate': HttpDate.format(endDate.toUtc()),
+      },
+      payloadExtra: {r'$order': 'DATA_DOC desc'},
+    );
+  }
+
   // POST in stilul EMSYS "LOAD_RECORDS": trimite codclient / nrcontract si
   // fereastra de timp (startdate/enddate) prin ANTETE, iar filtrele prin corp.
   // Intoarce JSON-ul decodat (de obicei { "records": [ { "row": {...} } ] }).
@@ -265,5 +350,14 @@ class PortalClient {
       if (v != null && '$v'.trim().isNotEmpty) return '$v'.trim();
     }
     return null;
+  }
+
+  dynamic _decodeBody(String body) {
+    if (body.isEmpty) return null;
+    try {
+      return jsonDecode(body);
+    } catch (_) {
+      return body;
+    }
   }
 }

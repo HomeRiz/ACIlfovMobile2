@@ -8,11 +8,14 @@
 
 import '../models/account.dart';
 import '../models/account_activity.dart';
+import '../models/contact_option.dart';
 import '../models/consumption_point.dart';
 import '../models/consumption_record.dart';
 import '../models/invoice.dart';
+import '../models/linked_account.dart';
 import '../models/meter_index.dart';
 import '../models/payment_record.dart';
+import '../models/portal_config.dart';
 import 'aci_repository.dart';
 
 class MockACIRepository implements ACIRepository {
@@ -20,9 +23,9 @@ class MockACIRepository implements ACIRepository {
   Future<Account> getAccount() async {
     await Future.delayed(const Duration(milliseconds: 400));
     return const Account(
-      holderName: 'Popescu Ion',
-      clientCode: 'ACI-123456',
-      address: 'Str. Exemplu nr. 10, Otopeni, Ilfov',
+      holderName: 'Client demonstrativ',
+      clientCode: 'CLIENT_TEST',
+      address: 'Adresa demonstrativa',
       balance: -87.50,
     );
   }
@@ -37,8 +40,8 @@ class MockACIRepository implements ACIRepository {
     return [
       AccountActivity(
         id: '101',
-        clientCode: 'ACI-123456',
-        contractNumber: '20',
+        clientCode: 'CLIENT_TEST',
+        contractNumber: 'CONTRACT_TEST',
         operation: 'Inregistrare index',
         alert: '',
         email: '',
@@ -46,20 +49,20 @@ class MockACIRepository implements ACIRepository {
       ),
       AccountActivity(
         id: '100',
-        clientCode: 'ACI-123456',
-        contractNumber: '20',
+        clientCode: 'CLIENT_TEST',
+        contractNumber: 'CONTRACT_TEST',
         operation: 'Trimitere mesaj companie',
         alert: '',
-        email: 'client@example.com',
+        email: '',
         operationDate: now.subtract(const Duration(days: 18)),
       ),
       AccountActivity(
         id: '99',
-        clientCode: 'ACI-123456',
-        contractNumber: '20',
+        clientCode: 'CLIENT_TEST',
+        contractNumber: 'CONTRACT_TEST',
         operation: 'Activare factura pe email',
         alert: '',
-        email: 'client@example.com',
+        email: '',
         operationDate: now.subtract(const Duration(days: 40)),
       ),
     ];
@@ -72,7 +75,7 @@ class MockACIRepository implements ACIRepository {
     return [
       Invoice(
         id: '1',
-        number: 'ACI-2026-000123',
+        number: 'FACTURA-TEST-001',
         issueDate: now.subtract(const Duration(days: 5)),
         dueDate: now.add(const Duration(days: 10)),
         amount: 87.50,
@@ -80,7 +83,7 @@ class MockACIRepository implements ACIRepository {
       ),
       Invoice(
         id: '2',
-        number: 'ACI-2026-000101',
+        number: 'FACTURA-TEST-002',
         issueDate: now.subtract(const Duration(days: 35)),
         dueDate: now.subtract(const Duration(days: 20)),
         amount: 92.30,
@@ -88,7 +91,7 @@ class MockACIRepository implements ACIRepository {
       ),
       Invoice(
         id: '3',
-        number: 'ACI-2026-000078',
+        number: 'FACTURA-TEST-003',
         issueDate: now.subtract(const Duration(days: 65)),
         dueDate: now.subtract(const Duration(days: 50)),
         amount: 79.10,
@@ -108,7 +111,7 @@ class MockACIRepository implements ACIRepository {
         id: '1',
         paymentDate: DateTime.now().subtract(const Duration(days: 20)),
         amount: 92.30,
-        document: 'OP-2026-000101',
+        document: 'PLATA-TEST-001',
         method: 'Online',
       ),
     ];
@@ -134,14 +137,169 @@ class MockACIRepository implements ACIRepository {
   }
 
   @override
+  Future<ContactOptions> getContactOptions() async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return const ContactOptions(
+      clientCodes: ['CLIENT_TEST'],
+      motives: [
+        ContactOption(id: '1', label: 'Sesizare'),
+        ContactOption(id: '2', label: 'Solicitare'),
+      ],
+      subjects: [
+        ContactOption(id: '1', label: 'Informatii contract'),
+        ContactOption(id: '2', label: 'Facturi si plati'),
+      ],
+      minimumMessageLength: 20,
+      defaultContactValue: '',
+    );
+  }
+
+  @override
+  Future<void> sendContactMessage({
+    required String clientCode,
+    required ContactOption motive,
+    required ContactOption subject,
+    required String contactMethod,
+    required String contactValue,
+    required String message,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+  }
+
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+  }
+
+  @override
+  Future<void> deletePortalAccount() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+  }
+
+  @override
+  Future<List<LinkedAccount>> getLinkedAccounts() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return const [
+      LinkedAccount(
+        clientCode: 'CLIENT_TEST',
+        contractNumber: 'CONTRACT_TEST',
+        holderName: 'Client demonstrativ',
+        address: 'Adresa demonstrativa',
+      ),
+    ];
+  }
+
+  @override
+  Future<void> addClientContract({
+    required String clientCode,
+    required String contractNumber,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+  }
+
+  @override
+  Future<List<String>> getClientCodesWithoutContracts() async => const [
+        'CLIENT_TEST',
+      ];
+
+  @override
+  Future<List<String>> getContractsWithoutClient(String clientCode) async =>
+      const ['CONTRACT_TEST_2'];
+
+  @override
+  Future<void> addContract({
+    required String clientCode,
+    required String contractNumber,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+  }
+
+  @override
+  Future<void> deleteClientCodes(List<String> clientCodes) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+  }
+
+  @override
+  Future<List<InvoiceDeliveryConfig>> getInvoiceDeliveryConfigs(
+    String mode,
+  ) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return [
+      InvoiceDeliveryConfig(
+        mode: mode,
+        destination: mode == 'EMAIL' ? 'EMAIL_TEST' : 'TELEFON_TEST',
+        operationDate: DateTime.now().subtract(const Duration(days: 10)),
+      ),
+    ];
+  }
+
+  @override
+  Future<void> activateInvoiceDelivery({
+    required String mode,
+    required String destination,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+  }
+
+  @override
+  Future<void> deactivateInvoiceDelivery({
+    required String mode,
+    required InvoiceDeliveryConfig config,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+  }
+
+  @override
+  Future<List<AlertConfig>> getAlertConfigs() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return const [
+      AlertConfig(
+        code: 'ALERTA_EMITERE_FACTURA',
+        label: 'Emitere factura',
+        active: true,
+        email: '',
+      ),
+      AlertConfig(
+        code: 'ALERTA_SCADENTA_AUTOCIT',
+        label: 'Scadenta autocitire',
+        active: false,
+      ),
+    ];
+  }
+
+  @override
+  Future<void> saveAlertConfig(AlertConfig config) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+  }
+
+  @override
+  Future<CompanyNotificationConfig> getCompanyNotificationConfig() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return const CompanyNotificationConfig(
+      emailAccepted: true,
+      smsAccepted: false,
+    );
+  }
+
+  @override
+  Future<void> saveCompanyNotificationConfig(
+    CompanyNotificationConfig config,
+  ) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+  }
+
+  @override
   Future<List<ConsumptionPoint>> getConsumptionPoints() async {
     await Future.delayed(const Duration(milliseconds: 300));
     return const [
       ConsumptionPoint(
         idLocatie: '1',
-        clientName: 'Popescu Ion',
-        address: 'Str. Exemplu nr. 10, Otopeni, Ilfov',
-        meters: ['60000001'],
+        clientName: 'Client demonstrativ',
+        address: 'Adresa demonstrativa',
+        meters: ['CONTOR_TEST'],
       ),
     ];
   }

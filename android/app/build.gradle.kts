@@ -15,7 +15,7 @@ if (hasReleaseKey) {
 }
 
 android {
-    namespace = "com.homeriz.acilfov_mobile"
+    namespace = "ro.acilfov.mobile"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -28,7 +28,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.homeriz.acilfov_mobile"
+        applicationId = "ro.acilfov.mobile"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

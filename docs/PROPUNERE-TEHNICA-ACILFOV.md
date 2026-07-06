@@ -1,7 +1,7 @@
 # Propunere tehnică: API, autentificare OAuth și tokene de integrare pentru portalul ACIlfov
 
 **Către:** Echipa tehnică Apa Canal Ilfov / furnizorul platformei `acilfov.emsys.ro`
-**De la:** [Nume / HomeRiz]
+**De la:** [Nume expeditor]
 **Data:** [completează la trimitere]
 **Subiect:** Propunere pentru expunerea unui API de cont, autentificare standard OAuth 2.0 și tokene read-only pentru integrări personale (ex. Home Assistant)
 
@@ -118,7 +118,7 @@ GET  /api/v1/meter-index        -> { last_value, last_read_date, window_start, w
 POST /api/v1/meter-index        -> body: { value }        (transmitere index)
 ```
 
-Toate cererile autentificate: antet `Authorization: Bearer <token>`.
+Toate cererile autentificate trebuie sa foloseasca un antet de autentificare cu token.
 
 ### 5.2 Flux OAuth 2.0 (Authorization Code)
 
