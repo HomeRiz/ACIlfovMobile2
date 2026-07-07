@@ -9,6 +9,9 @@
 //   - filtrul alb-negru (grayscale) peste tot
 // ===========================================================================
 
+import 'dart:async';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -16,10 +19,11 @@ import 'core/theme/app_theme.dart';
 import 'features/auth/login_screen.dart';
 import 'features/shell/home_shell.dart';
 import 'state/accessibility_provider.dart';
+import 'state/account_provider.dart';
 import 'state/auth_provider.dart';
 
-class ACIlfovApp extends StatelessWidget {
-  const ACIlfovApp({super.key});
+class ApaIlfovApp extends StatelessWidget {
+  const ApaIlfovApp({super.key});
 
   // Filtru alb-negru aplicat peste toata aplicatia cand optiunea e activa.
   static const ColorFilter _grayscale = ColorFilter.matrix(<double>[
@@ -34,7 +38,7 @@ class ACIlfovApp extends StatelessWidget {
     return Consumer<AccessibilityProvider>(
       builder: (context, a11y, _) {
         return MaterialApp(
-          title: 'ACIlfov',
+          title: 'Apa Ilfov',
           debugShowCheckedModeBanner: false,
           themeMode: a11y.darkMode ? ThemeMode.dark : ThemeMode.light,
           theme: AppTheme.build(
@@ -61,7 +65,7 @@ class ACIlfovApp extends StatelessWidget {
             if (a11y.grayscale) {
               result = ColorFiltered(colorFilter: _grayscale, child: result);
             }
-            return result;
+            return _ConnectivityGate(child: result);
           },
           home: Consumer<AuthProvider>(
             builder: (context, auth, _) =>
@@ -69,6 +73,91 @@ class ACIlfovApp extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _ConnectivityGate extends StatefulWidget {
+  final Widget child;
+
+  const _ConnectivityGate({required this.child});
+
+  @override
+  State<_ConnectivityGate> createState() => _ConnectivityGateState();
+}
+
+class _ConnectivityGateState extends State<_ConnectivityGate> {
+  final Connectivity _connectivity = Connectivity();
+  StreamSubscription<List<ConnectivityResult>>? _subscription;
+  bool? _online;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_checkInitialConnection());
+    _subscription = _connectivity.onConnectivityChanged.listen(_setStatus);
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkInitialConnection() async {
+    try {
+      _setStatus(await _connectivity.checkConnectivity());
+    } catch (_) {
+      if (mounted) setState(() => _online = null);
+    }
+  }
+
+  void _setStatus(List<ConnectivityResult> results) {
+    final nextOnline = results.any((r) => r != ConnectivityResult.none);
+    final wasOffline = _online == false;
+    if (mounted) setState(() => _online = nextOnline);
+
+    if (wasOffline && nextOnline && mounted) {
+      final auth = context.read<AuthProvider>();
+      if (auth.isLoggedIn) {
+        unawaited(context.read<AccountProvider>().load());
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        widget.child,
+        if (_online == false)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Material(
+              color: Colors.orange.shade800,
+              child: const SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Row(
+                    children: [
+                      Icon(Icons.wifi_off, color: Colors.white, size: 20),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Verificati conexiunea la internet. Se asteapta conexiunea la internet.',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

@@ -55,7 +55,7 @@ class NotificationService {
   NotificationDetails get _details => const NotificationDetails(
         android: AndroidNotificationDetails(
           'acilfov_general',
-          'Notificari ACIlfov',
+          'Notificari Apa Ilfov',
           channelDescription: 'Reamintiri pentru index si facturi',
           importance: Importance.high,
           priority: Priority.high,
@@ -104,6 +104,6 @@ class NotificationService {
   // Notificare imediata - utila pentru a testa ca notificarile functioneaza.
   Future<void> showTest() async {
     await _plugin.show(
-        9999, 'Test ACIlfov', 'Notificarile functioneaza!', _details);
+        9999, 'Test Apa Ilfov', 'Notificarile functioneaza!', _details);
   }
 }

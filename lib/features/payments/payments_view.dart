@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/utils/format.dart';
+import '../../core/widgets/failsafe_error_state.dart';
 import '../../data/models/payment_record.dart';
 import '../../data/repositories/aci_repository.dart';
 
@@ -34,7 +35,9 @@ class _PaymentsViewState extends State<PaymentsView> {
       _error = null;
     });
     try {
-      final payments = await context.read<ACIRepository>().getPayments(start: _start, end: _end);
+      final payments = await context
+          .read<ACIRepository>()
+          .getPayments(start: _start, end: _end);
       if (!mounted) return;
       setState(() {
         _payments = payments;
@@ -66,13 +69,19 @@ class _PaymentsViewState extends State<PaymentsView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Perioda', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF335C80))),
+          const Text('Perioda',
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, color: Color(0xFF335C80))),
           const SizedBox(height: 6),
           Row(
             children: [
-              Expanded(child: _dateField('De la', _start, () => _pickDate(start: true))),
+              Expanded(
+                  child: _dateField(
+                      'De la', _start, () => _pickDate(start: true))),
               const SizedBox(width: 8),
-              Expanded(child: _dateField('Pana la', _end, () => _pickDate(start: false))),
+              Expanded(
+                  child: _dateField(
+                      'Pana la', _end, () => _pickDate(start: false))),
             ],
           ),
         ],
@@ -83,7 +92,7 @@ class _PaymentsViewState extends State<PaymentsView> {
   Widget _body() {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) {
-      return Center(child: Padding(padding: const EdgeInsets.all(24), child: Text('Nu am putut incarca platile: $_error')));
+      return FailsafeErrorState(error: _error, onReload: _load);
     }
     if (_payments.isEmpty) return const Center(child: Text('No data'));
     return RefreshIndicator(
@@ -100,7 +109,8 @@ class _PaymentsViewState extends State<PaymentsView> {
               if (p.paymentDate != null) 'Data plata: ${dmy(p.paymentDate!)}',
               if (p.method.isNotEmpty) p.method,
             ].join(' • ')),
-            trailing: Text(ron(p.amount), style: const TextStyle(fontWeight: FontWeight.bold)),
+            trailing: Text(ron(p.amount),
+                style: const TextStyle(fontWeight: FontWeight.bold)),
           );
         },
       ),

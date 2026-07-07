@@ -36,7 +36,7 @@ class MainActivity : FlutterActivity() {
                         if (url != null && cookies != null) {
                             for (pair in cookies.split("; ")) {
                                 if (pair.isNotBlank()) {
-                                    cookieManager.setCookie(url, "$pair; Secure")
+                                    cookieManager.setCookie(url, "$pair; Secure; HttpOnly; SameSite=Lax")
                                 }
                             }
                         }

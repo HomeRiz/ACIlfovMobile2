@@ -72,7 +72,7 @@ class _DeleteAccountViewState extends State<DeleteAccountView> {
       builder: (ctx) => AlertDialog(
         title: const Text('Stergere cont'),
         content: const Text(
-          'Confirmi stergerea contului din portalul ACIlfov?',
+          'Confirmi stergerea contului din portalul Apa Ilfov?',
         ),
         actions: [
           TextButton(

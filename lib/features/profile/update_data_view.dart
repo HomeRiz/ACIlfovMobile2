@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/widgets/failsafe_error_state.dart';
 import '../../data/models/linked_account.dart';
 import '../../data/repositories/aci_repository.dart';
 
@@ -33,7 +34,9 @@ class _UpdateDataViewState extends State<UpdateDataView> {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-              if (snapshot.hasError) return _errorState(snapshot.error.toString());
+              if (snapshot.hasError) {
+                return _errorState(snapshot.error.toString());
+              }
               final accounts = snapshot.data ?? const <LinkedAccount>[];
               if (accounts.isEmpty) return _emptyState();
               return RefreshIndicator(
@@ -78,7 +81,8 @@ class _UpdateDataViewState extends State<UpdateDataView> {
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 2),
-                        if (a.holderName.isNotEmpty) Text('Nume: ${a.holderName}'),
+                        if (a.holderName.isNotEmpty)
+                          Text('Nume: ${a.holderName}'),
                         if (a.address.isNotEmpty)
                           Text(
                             'Adresa: ${a.address}',
@@ -124,25 +128,7 @@ class _UpdateDataViewState extends State<UpdateDataView> {
   }
 
   Widget _errorState(String error) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 42),
-            const SizedBox(height: 12),
-            Text(error, textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: _reload,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Reincarca'),
-            ),
-          ],
-        ),
-      ),
-    );
+    return FailsafeErrorState(error: error, onReload: _reload);
   }
 
   Widget _toolbar() {

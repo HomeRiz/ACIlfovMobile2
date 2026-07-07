@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/utils/format.dart';
+import '../../core/widgets/failsafe_error_state.dart';
 import '../../data/models/consumption_point.dart';
 import '../../data/repositories/aci_repository.dart';
 import '../../state/account_provider.dart';
@@ -63,6 +64,9 @@ class _IndexViewState extends State<IndexView> {
         if (p.loading && mi == null) {
           return const Center(child: CircularProgressIndicator());
         }
+        if (p.error != null && mi == null) {
+          return FailsafeErrorState(error: p.error, onReload: p.load);
+        }
         if (mi == null) {
           return const Center(child: Text('Indexul nu este disponibil.'));
         }
@@ -99,8 +103,6 @@ class _IndexViewState extends State<IndexView> {
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 labelText: 'Index nou',
-                // O singura rubrica: aceeasi valoare merge si la "verificare index".
-                helperText: 'Aceeasi valoare se trimite si la verificarea indexului.',
                 border: OutlineInputBorder(),
               ),
               enabled: open,
@@ -132,10 +134,12 @@ class _IndexViewState extends State<IndexView> {
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            _kv('Punct Consum', point?.address.isNotEmpty == true ? point!.address : '-'),
+            _kv('Punct Consum',
+                point?.address.isNotEmpty == true ? point!.address : '-'),
             _kv('Contor', meter),
             _kv('Index anterior', lastValue?.toString() ?? '-'),
-            _kv('Data citirii anterioare', lastReadDate == null ? '-' : dmy(lastReadDate)),
+            _kv('Data citirii anterioare',
+                lastReadDate == null ? '-' : dmy(lastReadDate)),
           ],
         ),
       ),
@@ -147,7 +151,10 @@ class _IndexViewState extends State<IndexView> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(width: 148, child: Text(label, style: const TextStyle(color: Colors.black54))),
+            SizedBox(
+                width: 148,
+                child:
+                    Text(label, style: const TextStyle(color: Colors.black54))),
             Expanded(child: Text(value)),
           ],
         ),

@@ -74,7 +74,7 @@ class ApiACIRepository implements ACIRepository {
 
   @override
   Future<ContactOptions> getContactOptions() {
-    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+    throw UnimplementedError('API-ul oficial Apa Ilfov nu este configurat.');
   }
 
   @override
@@ -86,7 +86,7 @@ class ApiACIRepository implements ACIRepository {
     required String contactValue,
     required String message,
   }) {
-    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+    throw UnimplementedError('API-ul oficial Apa Ilfov nu este configurat.');
   }
 
   @override
@@ -94,17 +94,17 @@ class ApiACIRepository implements ACIRepository {
     required String currentPassword,
     required String newPassword,
   }) {
-    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+    throw UnimplementedError('API-ul oficial Apa Ilfov nu este configurat.');
   }
 
   @override
   Future<void> deletePortalAccount() {
-    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+    throw UnimplementedError('API-ul oficial Apa Ilfov nu este configurat.');
   }
 
   @override
   Future<List<LinkedAccount>> getLinkedAccounts() {
-    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+    throw UnimplementedError('API-ul oficial Apa Ilfov nu este configurat.');
   }
 
   @override
@@ -112,17 +112,17 @@ class ApiACIRepository implements ACIRepository {
     required String clientCode,
     required String contractNumber,
   }) {
-    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+    throw UnimplementedError('API-ul oficial Apa Ilfov nu este configurat.');
   }
 
   @override
   Future<List<String>> getClientCodesWithoutContracts() {
-    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+    throw UnimplementedError('API-ul oficial Apa Ilfov nu este configurat.');
   }
 
   @override
   Future<List<String>> getContractsWithoutClient(String clientCode) {
-    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+    throw UnimplementedError('API-ul oficial Apa Ilfov nu este configurat.');
   }
 
   @override
@@ -130,17 +130,17 @@ class ApiACIRepository implements ACIRepository {
     required String clientCode,
     required String contractNumber,
   }) {
-    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+    throw UnimplementedError('API-ul oficial Apa Ilfov nu este configurat.');
   }
 
   @override
   Future<void> deleteClientCodes(List<String> clientCodes) {
-    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+    throw UnimplementedError('API-ul oficial Apa Ilfov nu este configurat.');
   }
 
   @override
   Future<List<InvoiceDeliveryConfig>> getInvoiceDeliveryConfigs(String mode) {
-    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+    throw UnimplementedError('API-ul oficial Apa Ilfov nu este configurat.');
   }
 
   @override
@@ -148,7 +148,7 @@ class ApiACIRepository implements ACIRepository {
     required String mode,
     required String destination,
   }) {
-    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+    throw UnimplementedError('API-ul oficial Apa Ilfov nu este configurat.');
   }
 
   @override
@@ -156,29 +156,29 @@ class ApiACIRepository implements ACIRepository {
     required String mode,
     required InvoiceDeliveryConfig config,
   }) {
-    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+    throw UnimplementedError('API-ul oficial Apa Ilfov nu este configurat.');
   }
 
   @override
   Future<List<AlertConfig>> getAlertConfigs() {
-    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+    throw UnimplementedError('API-ul oficial Apa Ilfov nu este configurat.');
   }
 
   @override
   Future<void> saveAlertConfig(AlertConfig config) {
-    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+    throw UnimplementedError('API-ul oficial Apa Ilfov nu este configurat.');
   }
 
   @override
   Future<CompanyNotificationConfig> getCompanyNotificationConfig() {
-    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+    throw UnimplementedError('API-ul oficial Apa Ilfov nu este configurat.');
   }
 
   @override
   Future<void> saveCompanyNotificationConfig(
     CompanyNotificationConfig config,
   ) {
-    throw UnimplementedError('API-ul oficial ACIlfov nu este configurat.');
+    throw UnimplementedError('API-ul oficial Apa Ilfov nu este configurat.');
   }
 
   @override

@@ -47,6 +47,16 @@ Cand deschizi repo-ul pe MacBook, poti trimite acest mesaj:
    - pastreaza bundle id `ro.acilfov.mobile` sau schimba-l daca Apple cere un
      identificator unic;
    - conecteaza iPhone-ul si apasa `Run`.
+   - daca iPhone-ul refuza lansarea cu mesaj de profil/developer nevalidat,
+     deschide pe iPhone `Settings` -> `General` -> `VPN & Device Management`
+     si apasa `Trust` pentru profilul Apple Developer folosit la semnare.
+
+   Pentru instalare release direct din terminal:
+
+   ```bash
+   flutter build ios --release
+   flutter install -d <DEVICE_ID> --release
+   ```
 
 6. Pentru IPA semnat:
 
@@ -58,7 +68,27 @@ Cand deschizi repo-ul pe MacBook, poti trimite acest mesaj:
 
 ## Observatii
 
-- Proiectul foloseste structura iOS Flutter curenta cu Swift Package Manager.
-- `ios/Podfile` nu este obligatoriu in acest template Flutter.
+- Proiectul iOS este configurat cu CocoaPods, deoarece unele pluginuri folosite
+  de aplicatie nu au inca suport complet Swift Package Manager.
+- Pe acest Mac, suportul Flutter pentru Swift Package Manager a fost dezactivat
+  cu:
+
+  ```bash
+  flutter config --no-enable-swift-package-manager
+  ```
+
+  Daca folosesti alt Mac si vezi build-uri blocate in `Resolve Package Graph`
+  sau `ibtool`, ruleaza aceeasi comanda, apoi:
+
+  ```bash
+  flutter clean
+  flutter pub get
+  flutter build ios --debug --no-codesign
+  ```
+
+- `ios/Podfile` si `ios/Podfile.lock` trebuie pastrate in proiect.
+- Lansarea iOS este programatica prin `ios/Runner/SceneDelegate.swift`, fara
+  `Main.storyboard` in build. Launch screen-ul foloseste cheia `UILaunchScreen`
+  din `ios/Runner/Info.plist`.
 - Daca Xcode cere actualizari de signing/provisioning, lasa Xcode sa le faca
   automat dupa ce alegi `Team`.

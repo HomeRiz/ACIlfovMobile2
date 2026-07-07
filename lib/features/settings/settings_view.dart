@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/config/app_config.dart';
 import '../../core/utils/format.dart';
+import '../../core/widgets/failsafe_error_state.dart';
 import '../../data/models/portal_config.dart';
 import '../../data/repositories/aci_repository.dart';
 import '../../services/notification_service.dart';
@@ -61,7 +61,7 @@ class _SettingsViewState extends State<SettingsView> {
                 _applyDefaults(data);
                 return TabBarView(
                   children: [
-                    _invoiceTab(data.invoiceConfigs),
+                    _invoiceTab(data),
                     _alertsTab(data),
                   ],
                 );
@@ -73,12 +73,14 @@ class _SettingsViewState extends State<SettingsView> {
     );
   }
 
-  Widget _invoiceTab(List<InvoiceDeliveryConfig> configs) {
+  Widget _invoiceTab(_SettingsData data) {
+    final configs = data.invoiceConfigs;
     return RefreshIndicator(
       onRefresh: _reload,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          ..._warningCards(data.invoiceWarnings),
           DropdownButtonFormField<String>(
             initialValue: _sendMode,
             decoration: const InputDecoration(
@@ -113,9 +115,8 @@ class _SettingsViewState extends State<SettingsView> {
           const SizedBox(height: 8),
           CheckboxListTile(
             value: _accepted,
-            onChanged: _busy
-                ? null
-                : (v) => setState(() => _accepted = v ?? false),
+            onChanged:
+                _busy ? null : (v) => setState(() => _accepted = v ?? false),
             title: const Text('Accept Conditii de activare factura*'),
             controlAffinity: ListTileControlAffinity.leading,
           ),
@@ -171,11 +172,6 @@ class _SettingsViewState extends State<SettingsView> {
             icon: const Icon(Icons.notifications_active),
             label: const Text('Trimite notificare de test'),
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Sursa de date curenta: ${AppConfig.dataSource.name}',
-            style: const TextStyle(color: Colors.black54, fontSize: 12),
-          ),
         ],
       ),
     );
@@ -187,14 +183,15 @@ class _SettingsViewState extends State<SettingsView> {
       child: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
+          ..._warningCards(data.alertWarnings, horizontal: 16),
           for (final alert in data.alerts)
             SwitchListTile(
               value: alert.active,
               onChanged: _busy
                   ? null
                   : (v) => v
-                        ? _activateAlert(alert)
-                        : _saveAlert(alert.copyWith(active: false)),
+                      ? _activateAlert(alert)
+                      : _saveAlert(alert.copyWith(active: false)),
               title: Text(_alertTitle(alert)),
               subtitle: Text(
                 [
@@ -209,13 +206,13 @@ class _SettingsViewState extends State<SettingsView> {
             onChanged: _busy
                 ? null
                 : (v) => _saveCompanyNotification(
-                    (data.companyNotification ??
-                            const CompanyNotificationConfig(
-                              emailAccepted: false,
-                              smsAccepted: false,
-                            ))
-                        .copyWith(emailAccepted: v),
-                  ),
+                      (data.companyNotification ??
+                              const CompanyNotificationConfig(
+                                emailAccepted: false,
+                                smsAccepted: false,
+                              ))
+                          .copyWith(emailAccepted: v),
+                    ),
             title: const Text('Accept sa primesc e-mail'),
             subtitle: const Text('Notificari companie'),
           ),
@@ -224,16 +221,16 @@ class _SettingsViewState extends State<SettingsView> {
             onChanged: _busy
                 ? null
                 : (v) => _saveCompanyNotification(
-                    (data.companyNotification ??
-                            const CompanyNotificationConfig(
-                              emailAccepted: false,
-                              smsAccepted: false,
-                            ))
-                        .copyWith(
-                          smsAccepted: v,
-                          phone: v ? _companyPhone.text.trim() : null,
-                        ),
-                  ),
+                      (data.companyNotification ??
+                              const CompanyNotificationConfig(
+                                emailAccepted: false,
+                                smsAccepted: false,
+                              ))
+                          .copyWith(
+                        smsAccepted: v,
+                        phone: v ? _companyPhone.text.trim() : null,
+                      ),
+                    ),
             title: const Text('Accept sa primesc telefon'),
             subtitle: const Text('Notificari companie prin SMS'),
           ),
@@ -265,18 +262,42 @@ class _SettingsViewState extends State<SettingsView> {
 
   Future<_SettingsData> _load() async {
     final repo = context.read<ACIRepository>();
-    final invoiceConfigs = await repo.getInvoiceDeliveryConfigs(_sendMode);
-    final alerts = await repo.getAlertConfigs();
+    final invoiceWarnings = <String>[];
+    final alertWarnings = <String>[];
+    var invoiceConfigs = <InvoiceDeliveryConfig>[];
+    var alerts = <AlertConfig>[];
     CompanyNotificationConfig? companyNotification;
+
+    try {
+      invoiceConfigs = await repo.getInvoiceDeliveryConfigs(_sendMode);
+    } catch (e) {
+      invoiceWarnings.add(
+        'Configurarea facturii nu poate fi citita acum: ${SessionFailsafe.friendlyMessage(e)}',
+      );
+    }
+
+    try {
+      alerts = await repo.getAlertConfigs();
+    } catch (e) {
+      alertWarnings.add(
+        'Alertele aplicatiei nu pot fi citite acum: ${SessionFailsafe.friendlyMessage(e)}',
+      );
+    }
+
     try {
       companyNotification = await repo.getCompanyNotificationConfig();
-    } catch (_) {
+    } catch (e) {
       companyNotification = null;
+      alertWarnings.add(
+        'Preferintele de notificari companie nu pot fi citite acum: ${SessionFailsafe.friendlyMessage(e)}',
+      );
     }
     return _SettingsData(
       invoiceConfigs: invoiceConfigs,
       alerts: alerts,
       companyNotification: companyNotification,
+      invoiceWarnings: invoiceWarnings,
+      alertWarnings: alertWarnings,
     );
   }
 
@@ -293,9 +314,9 @@ class _SettingsViewState extends State<SettingsView> {
     }
     await _run(
       () => context.read<ACIRepository>().activateInvoiceDelivery(
-        mode: _sendMode,
-        destination: destination,
-      ),
+            mode: _sendMode,
+            destination: destination,
+          ),
       success: 'Configurarea a fost activata.',
     );
     if (mounted) setState(() => _accepted = false);
@@ -306,9 +327,9 @@ class _SettingsViewState extends State<SettingsView> {
     if (!ok) return;
     await _run(
       () => context.read<ACIRepository>().deactivateInvoiceDelivery(
-        mode: _sendMode,
-        config: config,
-      ),
+            mode: _sendMode,
+            config: config,
+          ),
       success: 'Configurarea a fost dezactivata.',
     );
   }
@@ -390,8 +411,8 @@ class _SettingsViewState extends State<SettingsView> {
     }
     await _run(
       () => context.read<ACIRepository>().saveCompanyNotificationConfig(
-        config.copyWith(phone: _companyPhone.text.trim()),
-      ),
+            config.copyWith(phone: _companyPhone.text.trim()),
+          ),
       success: 'Preferintele au fost salvate.',
     );
   }
@@ -434,25 +455,50 @@ class _SettingsViewState extends State<SettingsView> {
   }
 
   Widget _errorState(String error) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 42),
-            const SizedBox(height: 12),
-            Text(error, textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: _reload,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Reincarca'),
+    return FailsafeErrorState(error: error, onReload: _reload);
+  }
+
+  List<Widget> _warningCards(List<String> warnings, {double horizontal = 0}) {
+    if (warnings.isEmpty) return const [];
+    return [
+      for (final warning in warnings)
+        Padding(
+          padding: EdgeInsets.fromLTRB(horizontal, 0, horizontal, 12),
+          child: Card(
+            color: Colors.orange.shade50,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: Icon(
+                    Icons.info_outline,
+                    color: Colors.orange.shade900,
+                  ),
+                  title: Text(warning),
+                  subtitle: const Text(
+                    'Daca serverul refuza accesul, restul aplicatiei ramane functional.',
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton.tonalIcon(
+                      onPressed: () => SessionFailsafe.reloadOrLogout(
+                        context,
+                        error: warning,
+                        onReload: _reload,
+                      ),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Reincarca'),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
-    );
+    ];
   }
 
   void _snack(String msg) {
@@ -492,10 +538,14 @@ class _SettingsData {
   final List<InvoiceDeliveryConfig> invoiceConfigs;
   final List<AlertConfig> alerts;
   final CompanyNotificationConfig? companyNotification;
+  final List<String> invoiceWarnings;
+  final List<String> alertWarnings;
 
   const _SettingsData({
     this.invoiceConfigs = const [],
     this.alerts = const [],
     this.companyNotification,
+    this.invoiceWarnings = const [],
+    this.alertWarnings = const [],
   });
 }

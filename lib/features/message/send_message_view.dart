@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/widgets/failsafe_error_state.dart';
 import '../../data/models/contact_option.dart';
 import '../../data/repositories/aci_repository.dart';
 
@@ -155,7 +156,6 @@ class _SendMessageViewState extends State<SendMessageView> {
                 leading: const Icon(Icons.phone, color: Color(0xFF335C80)),
                 title: const Text('Telefon'),
                 subtitle: const Text('0374 / 205 200'),
-                trailing: const Icon(Icons.open_in_new),
                 onTap: () =>
                     _launchExternal(Uri(scheme: 'tel', path: '0374205200')),
               ),
@@ -163,7 +163,6 @@ class _SendMessageViewState extends State<SendMessageView> {
                 leading: const Icon(Icons.email, color: Color(0xFF335C80)),
                 title: const Text('E-mail'),
                 subtitle: const Text('contact@acilfov.ro'),
-                trailing: const Icon(Icons.open_in_new),
                 onTap: () => _launchExternal(
                   Uri(scheme: 'mailto', path: 'contact@acilfov.ro'),
                 ),
@@ -172,7 +171,6 @@ class _SendMessageViewState extends State<SendMessageView> {
                 leading: const Icon(Icons.public, color: Color(0xFF335C80)),
                 title: const Text('Website'),
                 subtitle: const Text('www.acilfov.ro'),
-                trailing: const Icon(Icons.open_in_new),
                 onTap: () => _launchExternal(
                   Uri.parse('https://www.acilfov.ro/'),
                 ),
@@ -246,25 +244,7 @@ class _SendMessageViewState extends State<SendMessageView> {
   }
 
   Widget _errorState(String error) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 42),
-            const SizedBox(height: 12),
-            Text(error, textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: _reload,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Reincarca'),
-            ),
-          ],
-        ),
-      ),
-    );
+    return FailsafeErrorState(error: error, onReload: _reload);
   }
 
   void _snack(String msg) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/utils/format.dart';
+import '../../core/widgets/failsafe_error_state.dart';
 import '../../data/models/consumption_point.dart';
 import '../../data/models/consumption_record.dart';
 import '../../data/repositories/aci_repository.dart';
@@ -39,7 +40,8 @@ class _ConsumptionChartViewState extends State<ConsumptionChartView> {
     try {
       final repo = context.read<ACIRepository>();
       final points = await repo.getConsumptionPoints();
-      final id = _idLocatie ?? (points.isNotEmpty ? points.first.idLocatie : null);
+      final id =
+          _idLocatie ?? (points.isNotEmpty ? points.first.idLocatie : null);
       ConsumptionPoint? point;
       for (final p in points) {
         if (p.idLocatie == id) {
@@ -47,7 +49,8 @@ class _ConsumptionChartViewState extends State<ConsumptionChartView> {
           break;
         }
       }
-      final meter = point?.meters.isNotEmpty == true ? point!.meters.first : null;
+      final meter =
+          point?.meters.isNotEmpty == true ? point!.meters.first : null;
       final records = id != null && meter != null
           ? await repo.getConsumption(
               idLocatie: id,
@@ -103,9 +106,13 @@ class _ConsumptionChartViewState extends State<ConsumptionChartView> {
               const _PortalLabel('Perioda'),
               Row(
                 children: [
-                  Expanded(child: _dateField('De la', _start, () => _pickDate(start: true))),
+                  Expanded(
+                      child: _dateField(
+                          'De la', _start, () => _pickDate(start: true))),
                   const SizedBox(width: 8),
-                  Expanded(child: _dateField('Pana la', _end, () => _pickDate(start: false))),
+                  Expanded(
+                      child: _dateField(
+                          'Pana la', _end, () => _pickDate(start: false))),
                 ],
               ),
               const SizedBox(height: 12),
@@ -113,12 +120,15 @@ class _ConsumptionChartViewState extends State<ConsumptionChartView> {
               DropdownButtonFormField<String>(
                 initialValue: _idLocatie,
                 isExpanded: true,
-                decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+                decoration: const InputDecoration(
+                    border: OutlineInputBorder(), isDense: true),
                 items: [
                   for (final p in _points)
                     DropdownMenuItem(
                       value: p.idLocatie,
-                      child: Text(p.address.isEmpty ? 'Locatie ${p.idLocatie}' : p.address),
+                      child: Text(p.address.isEmpty
+                          ? 'Locatie ${p.idLocatie}'
+                          : p.address),
                     ),
                 ],
                 onChanged: (v) {
@@ -139,17 +149,14 @@ class _ConsumptionChartViewState extends State<ConsumptionChartView> {
   Widget _body() {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text('Nu am putut incarca graficul: $_error', textAlign: TextAlign.center),
-        ),
-      );
+      return FailsafeErrorState(error: _error, onReload: _load);
     }
     if (_records.isEmpty) {
-      return const Center(child: Text('Nu exista consum pentru perioada selectata.'));
+      return const Center(
+          child: Text('Nu exista consum pentru perioada selectata.'));
     }
-    final maxValue = _records.map((r) => r.diferenta).fold<int>(1, (a, b) => b > a ? b : a);
+    final maxValue =
+        _records.map((r) => r.diferenta).fold<int>(1, (a, b) => b > a ? b : a);
     final records = _records.take(12).toList().reversed.toList();
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -159,7 +166,10 @@ class _ConsumptionChartViewState extends State<ConsumptionChartView> {
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(
               children: [
-                SizedBox(width: 86, child: Text(r.dataConsum == null ? '-' : dmy(r.dataConsum!))),
+                SizedBox(
+                    width: 86,
+                    child:
+                        Text(r.dataConsum == null ? '-' : dmy(r.dataConsum!))),
                 Expanded(
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(4),
@@ -167,7 +177,8 @@ class _ConsumptionChartViewState extends State<ConsumptionChartView> {
                       value: maxValue == 0 ? 0 : r.diferenta / maxValue,
                       minHeight: 18,
                       backgroundColor: const Color(0xFFE6EDF3),
-                      valueColor: const AlwaysStoppedAnimation(Color(0xFF335C80)),
+                      valueColor:
+                          const AlwaysStoppedAnimation(Color(0xFF335C80)),
                     ),
                   ),
                 ),
@@ -205,7 +216,8 @@ class _PortalLabel extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 6),
         child: Text(
           text,
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF335C80)),
+          style: const TextStyle(
+              fontWeight: FontWeight.bold, color: Color(0xFF335C80)),
         ),
       );
 }

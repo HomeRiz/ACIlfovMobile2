@@ -8,7 +8,7 @@
 # ===========================================================================
 
 name: acilfov_mobile
-description: Aplicatia mobila ACIlfov (v2) - nativa, cu WebView doar pentru autentificare.
+description: Aplicatia mobila Apa Ilfov (v2) - nativa, cu WebView doar pentru autentificare.
 publish_to: 'none' # aplicatie privata, NU se publica pe pub.dev
 version: 2.0.0+1
 
@@ -36,7 +36,7 @@ dependencies:
   # schimbat datele si se redeseneaza singure.
   provider: ^6.1.2
 
-  # Apeluri HTTP catre API - pregatit pentru viitor (cand ACIlfov publica API-ul).
+  # Apeluri HTTP catre API - pregatit pentru viitor (cand Apa Ilfov publica API-ul).
   http: ^1.2.2
 
   # NOTIFICARI LOCALE (fara server): reamintiri pe telefon pentru perioada de

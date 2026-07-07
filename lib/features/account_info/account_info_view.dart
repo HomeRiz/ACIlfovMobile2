@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/utils/format.dart';
+import '../../core/widgets/failsafe_error_state.dart';
 import '../../data/models/account_activity.dart';
 import '../../data/repositories/aci_repository.dart';
 
@@ -82,11 +83,12 @@ class _AccountInfoViewState extends State<AccountInfoView> {
                 );
               }
               if (snapshot.hasError) {
-                return _MessageCard(
-                  icon: Icons.error_outline,
-                  text: 'Nu am putut incarca informatiile contului.',
-                  actionLabel: 'Reincarca',
-                  onAction: _reload,
+                return SizedBox(
+                  height: 260,
+                  child: FailsafeErrorState(
+                    error: snapshot.error,
+                    onReload: _reload,
+                  ),
                 );
               }
               final activities = snapshot.data ?? const <AccountActivity>[];
@@ -215,14 +217,10 @@ class _OperationCard extends StatelessWidget {
 class _MessageCard extends StatelessWidget {
   final IconData icon;
   final String text;
-  final String? actionLabel;
-  final VoidCallback? onAction;
 
   const _MessageCard({
     required this.icon,
     required this.text,
-    this.actionLabel,
-    this.onAction,
   });
 
   @override
@@ -235,14 +233,6 @@ class _MessageCard extends StatelessWidget {
               Icon(icon, size: 48, color: const Color(0xFF335C80)),
               const SizedBox(height: 12),
               Text(text, textAlign: TextAlign.center),
-              if (actionLabel != null && onAction != null) ...[
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: onAction,
-                  icon: const Icon(Icons.refresh),
-                  label: Text(actionLabel!),
-                ),
-              ],
             ],
           ),
         ),

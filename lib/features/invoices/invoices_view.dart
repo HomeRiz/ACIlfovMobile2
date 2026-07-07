@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/utils/format.dart';
+import '../../core/widgets/failsafe_error_state.dart';
 import '../../state/account_provider.dart';
 
 class InvoicesView extends StatefulWidget {
@@ -29,10 +30,15 @@ class _InvoicesViewState extends State<InvoicesView> {
     return Consumer<AccountProvider>(
       builder: (context, p, _) {
         final invoices = p.invoices
-            .where((i) => !i.issueDate.isBefore(_start) && !i.issueDate.isAfter(_end))
+            .where((i) =>
+                !i.issueDate.isBefore(_start) && !i.issueDate.isAfter(_end))
             .toList();
-        final overdue = invoices.where((i) => !i.paid && i.isOverdue).fold<double>(0, (s, i) => s + i.amount);
-        final due = invoices.where((i) => !i.paid).fold<double>(0, (s, i) => s + i.amount);
+        final overdue = invoices
+            .where((i) => !i.paid && i.isOverdue)
+            .fold<double>(0, (s, i) => s + i.amount);
+        final due = invoices
+            .where((i) => !i.paid)
+            .fold<double>(0, (s, i) => s + i.amount);
         return Column(
           children: [
             _filters(p, due, overdue),
@@ -40,7 +46,9 @@ class _InvoicesViewState extends State<InvoicesView> {
             Expanded(
               child: p.loading && p.invoices.isEmpty
                   ? const Center(child: CircularProgressIndicator())
-                  : _list(invoices),
+                  : p.error != null && p.invoices.isEmpty
+                      ? FailsafeErrorState(error: p.error, onReload: p.load)
+                      : _list(invoices),
             ),
           ],
         );
@@ -57,9 +65,13 @@ class _InvoicesViewState extends State<InvoicesView> {
           const _Label('Perioda'),
           Row(
             children: [
-              Expanded(child: _dateField('De la', _start, () => _pickDate(start: true))),
+              Expanded(
+                  child: _dateField(
+                      'De la', _start, () => _pickDate(start: true))),
               const SizedBox(width: 8),
-              Expanded(child: _dateField('Pana la', _end, () => _pickDate(start: false))),
+              Expanded(
+                  child: _dateField(
+                      'Pana la', _end, () => _pickDate(start: false))),
             ],
           ),
           const SizedBox(height: 12),
@@ -107,17 +119,22 @@ class _InvoicesViewState extends State<InvoicesView> {
         separatorBuilder: (_, __) => const Divider(height: 1),
         itemBuilder: (context, i) {
           final inv = invoices[i];
-          final color = inv.paid ? Colors.green : (inv.isOverdue ? Colors.red : Colors.orange);
-          final status = inv.paid ? 'Platita' : (inv.isOverdue ? 'Scadenta' : 'Neplatita');
+          final color = inv.paid
+              ? Colors.green
+              : (inv.isOverdue ? Colors.red : Colors.orange);
+          final status =
+              inv.paid ? 'Platita' : (inv.isOverdue ? 'Scadenta' : 'Neplatita');
           return ListTile(
             leading: Icon(Icons.receipt_long, color: color),
             title: Text(inv.number.isEmpty ? 'Factura' : inv.number),
-            subtitle: Text('Emisa: ${dmy(inv.issueDate)}  •  Scadenta: ${dmy(inv.dueDate)}'),
+            subtitle: Text(
+                'Emisa: ${dmy(inv.issueDate)}  •  Scadenta: ${dmy(inv.dueDate)}'),
             trailing: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(ron(inv.amount), style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(ron(inv.amount),
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
                 Text(status, style: TextStyle(color: color, fontSize: 12)),
               ],
             ),
@@ -174,6 +191,8 @@ class _Label extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: 6),
-        child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF335C80))),
+        child: Text(text,
+            style: const TextStyle(
+                fontWeight: FontWeight.bold, color: Color(0xFF335C80))),
       );
 }

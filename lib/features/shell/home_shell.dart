@@ -159,17 +159,19 @@ class _HomeShellState extends State<HomeShell> {
       child: Column(
         children: [
           // Antetul meniului (albastrul din branding).
-          const DrawerHeader(
-            decoration: BoxDecoration(color: Color(0xFF335C80)),
+          DrawerHeader(
+            decoration: const BoxDecoration(color: Color(0xFF335C80)),
             margin: EdgeInsets.zero,
             child: Align(
               alignment: Alignment.bottomLeft,
               child: Row(
                 children: [
-                  Icon(Icons.water_drop, color: Colors.white, size: 32),
-                  SizedBox(width: 12),
-                  Text('ACIlfov',
-                      style: TextStyle(color: Colors.white, fontSize: 22)),
+                  Image.asset('assets/logo.png', height: 42, width: 42),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Apa Ilfov',
+                    style: TextStyle(color: Colors.white, fontSize: 22),
+                  ),
                 ],
               ),
             ),

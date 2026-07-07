@@ -21,35 +21,24 @@ sa treaca usor pe un API oficial ACIlfov cand acesta va exista.
 
 ---
 
-## Cum pornesti proiectul (pe PC-ul tau)
+## Cum pornesti proiectul
 
-Structura din acest folder contine codul aplicatiei (`lib/`), dar **nu** si
-folderele native `android/` si `ios/` (se genereaza automat).
+Structura din acest folder contine codul aplicatiei (`lib/`) si folderele
+native `android/` si `ios/`.
 
-1. Deschide un terminal in acest folder si genereaza partea nativa:
-
-   ```
-   flutter create --project-name acilfov_mobile .
-   ```
-
-2. Descarca pachetele:
+1. Deschide un terminal in acest folder si descarca pachetele:
 
    ```
    flutter pub get
    ```
 
-3. Copiaza codul nativ pentru cookie-uri din **v1** (ca sa functioneze
-   pastrarea sesiunii). Din proiectul vechi ACIlfovMobile, copiaza:
-   - `android/app/src/main/kotlin/.../MainActivity.kt`
-   - `ios/Runner/AppDelegate.swift`
-
-   (Sunt aceleasi - folosesc canalul `acilfov/cookies`.)
-
-4. Ruleaza aplicatia:
+2. Ruleaza aplicatia:
 
    ```
    flutter run
    ```
+
+Pentru build si signing iOS pe MacBook, vezi `IOS_BUILD_MACBOOK.md`.
 
 > **Vrei doar sa vezi interfata?** In modul debug, pe ecranul de login apasa
 > butonul de intrare (dreapta sus) - sare peste login si intra direct in

@@ -5,14 +5,16 @@
 //
 //  Ce face aici:
 //   1. Porneste serviciul de notificari locale.
-//   2. Alege DE UNDE vin datele (azi: date de test; maine: API-ul ACIlfov).
+//   2. Alege DE UNDE vin datele (azi: date de test; maine: API-ul Apa Ilfov).
 //   3. Ofera datele + starea aplicatiei tuturor ecranelor (prin "Provider").
 //
 //  IMPORTANT (locul unde treci la API-ul real):
 //   Cauta mai jos linia "final ACIRepository repo = MockACIRepository();".
-//   Cand ACIlfov publica API-ul, o inlocuiesti cu ApiACIRepository() si GATA -
+//   Cand Apa Ilfov publica API-ul, o inlocuiesti cu ApiACIRepository() si GATA -
 //   restul aplicatiei ramane neschimbat.
 // ===========================================================================
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -28,9 +30,6 @@ import 'state/auth_provider.dart';
 Future<void> main() async {
   // Necesare inainte de a folosi pluginuri (notificari) la pornire.
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Pornim serviciul de notificari locale (cere permisiunile la nevoie).
-  await NotificationService.instance.init();
 
   // ----------------------------------------------------------------------
   //  DE UNDE VIN DATELE: sursa e aleasa automat dupa AppConfig.dataSource.
@@ -49,7 +48,27 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => AccountProvider(repo)),
         ChangeNotifierProvider(create: (_) => AccessibilityProvider()),
       ],
-      child: const ACIlfovApp(),
+      child: const ApaIlfovApp(),
     ),
   );
+
+  // Nu blocam primul ecran pentru permisiunile/pluginurile de notificari.
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(_initNotifications());
+  });
+}
+
+Future<void> _initNotifications() async {
+  try {
+    await NotificationService.instance.init();
+  } catch (error, stackTrace) {
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stackTrace,
+        library: 'notification_service',
+        context: ErrorDescription('initializing local notifications'),
+      ),
+    );
+  }
 }

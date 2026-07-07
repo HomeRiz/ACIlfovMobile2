@@ -4,20 +4,22 @@ import WebKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
+  lazy var flutterEngine = FlutterEngine(name: "ApaIlfovEngine")
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    GeneratedPluginRegistrant.register(with: self)
-    setupCookieChannel()
+    flutterEngine.run()
+    GeneratedPluginRegistrant.register(with: flutterEngine)
+    setupCookieChannel(binaryMessenger: flutterEngine.binaryMessenger)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  private func setupCookieChannel() {
-    guard let registrar = registrar(forPlugin: "AcilfovCookies") else { return }
+  private func setupCookieChannel(binaryMessenger: FlutterBinaryMessenger) {
     let channel = FlutterMethodChannel(
       name: "acilfov/cookies",
-      binaryMessenger: registrar.messenger()
+      binaryMessenger: binaryMessenger
     )
 
     channel.setMethodCallHandler { call, result in
@@ -52,6 +54,7 @@ import WebKit
             .name: name,
             .value: value,
             .secure: "TRUE",
+            HTTPCookiePropertyKey("HttpOnly"): "TRUE",
             .expires: Date(timeIntervalSinceNow: 30 * 24 * 60 * 60),
           ]) {
             group.enter()

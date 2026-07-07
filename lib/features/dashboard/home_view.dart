@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/utils/format.dart';
+import '../../core/widgets/failsafe_error_state.dart';
 import '../../state/account_provider.dart';
 import '../shell/shell_page.dart';
 
@@ -27,7 +28,7 @@ class HomeView extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _soldCard(p),
+              _soldCard(context, p),
               const SizedBox(height: 16),
               GridView.count(
                 crossAxisCount: 2,
@@ -55,12 +56,20 @@ class HomeView extends StatelessWidget {
   }
 
   // Cardul cu soldul curent.
-  Widget _soldCard(AccountProvider p) {
+  Widget _soldCard(BuildContext context, AccountProvider p) {
     if (p.loading && p.account == null) {
       return const Card(
         child: SizedBox(
           height: 120,
           child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+    if (p.error != null && p.account == null) {
+      return Card(
+        child: SizedBox(
+          height: 220,
+          child: FailsafeErrorState(error: p.error, onReload: p.load),
         ),
       );
     }
