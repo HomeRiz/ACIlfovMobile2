@@ -39,5 +39,3 @@ ios/build/
 *.env
 *.private.md
 *.personal.md
-
-handoff.md
