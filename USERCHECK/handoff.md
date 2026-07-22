@@ -1,4 +1,4 @@
-# Handoff - Apa Ilfov Mobile
+# Predare context - Apa Ilfov Mobile
 
 Ultima actualizare: 2026-07-07 04:01 EEST
 

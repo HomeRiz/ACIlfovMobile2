@@ -1,4 +1,4 @@
-# Threat model - ACIlfovMobile2
+# Model de amenintari - ACIlfovMobile2
 
 Data: 2026-07-07
 
@@ -23,7 +23,7 @@ apeluri REST EMSYS.
 - Cereri HTTPS catre `acilfov.emsys.ro`.
 - Actiuni de scriere prin REST intern EMSYS.
 
-## STRIDE
+## Analiza STRIDE
 
 | Categorie | Risc | Masuri existente |
 | --- | --- | --- |
