@@ -15,6 +15,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/widgets/page_backdrop.dart';
 import '../../state/account_provider.dart';
 import '../../state/auth_provider.dart';
 import '../accessibility/accessibility_sheet.dart';
@@ -104,6 +105,37 @@ class _HomeShellState extends State<HomeShell> {
       ? _infoMenu.label
       : _menu.firstWhere((e) => e.page == _page).label;
 
+  // Desenul decorativ (estompat) din spatele fiecarei pagini. `null` = pagina
+  // ramane clasica, cu fundal simplu.
+  BackdropMotif? _backdropFor(ShellPage p) {
+    switch (p) {
+      case ShellPage.home:
+        return BackdropMotif.house; // o casa cu AIF pe fronton
+      case ShellPage.invoices:
+        return BackdropMotif.invoice; // o factura fictiva
+      case ShellPage.indexPage:
+        return BackdropMotif.waterMeter; // un apometru
+      case ShellPage.payments:
+        return BackdropMotif.calendarInvoices; // calendar + teanc de facturi
+      case ShellPage.consumption:
+        return BackdropMotif.lineChart; // grafic liniar
+      case ShellPage.chart:
+        return BackdropMotif.barChart; // coloane + linie de tendinta
+      case ShellPage.updateData:
+        return BackdropMotif.personDocument; // omulet cu o hartie in mana
+      case ShellPage.settings:
+        return BackdropMotif.gears; // roti dintate
+      case ShellPage.changePassword:
+        return BackdropMotif.passwordStars; // camp de parola cu stelute
+      case ShellPage.contact:
+        return BackdropMotif.headsetAgent; // operator cu casti
+      case ShellPage.accountInfo:
+      case ShellPage.deleteAccount:
+      case ShellPage.info:
+        return null; // raman clasice, cu fundal simplu
+    }
+  }
+
   // Ce continut se afiseaza pentru pagina curenta (widget-uri fara bara proprie).
   Widget _bodyFor(ShellPage p) {
     switch (p) {
@@ -150,7 +182,10 @@ class _HomeShellState extends State<HomeShell> {
         ],
       ),
       drawer: _buildDrawer(),
-      body: _bodyFor(_page),
+      body: PageBackdrop(
+        motif: _backdropFor(_page),
+        child: _bodyFor(_page),
+      ),
     );
   }
 

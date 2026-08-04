@@ -11,4 +11,10 @@ String ron(double value) => '${value.toStringAsFixed(2)} lei';
 String dmy(DateTime d) =>
     '${_two(d.day)}.${_two(d.month)}.${d.year}';
 
+// Data si ora. Ex: "05.07.2026, 09:00".
+String dmyHm(DateTime d) => '${dmy(d)}, ${hm(d)}';
+
+// Doar ora. Ex: "09:05".
+String hm(DateTime d) => '${_two(d.hour)}:${_two(d.minute)}';
+
 String _two(int n) => n.toString().padLeft(2, '0');

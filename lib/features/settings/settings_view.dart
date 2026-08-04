@@ -1,11 +1,35 @@
+// ===========================================================================
+//  settings_view.dart  =  CONFIGURARI (un singur ecran, fara taburi)
+// ---------------------------------------------------------------------------
+//  Trei sectiuni, in ordinea in care ii pasa userului:
+//
+//   1. "Notificari pe telefon" - anunturi direct in aplicatie, fara email si
+//      fara SMS. Astea sunt gratuite si ajung instant. Sunt setarile pe care
+//      le controleaza chiar aplicatia.
+//   2. "Factura de la Apa Ilfov" - unde iti trimite compania factura. Emailul
+//      NU se mai scrie de mana: e cel cu care te-ai autentificat.
+//   3. "Alerte si informari de la Apa Ilfov" - preferintele de pe serverul
+//      companiei. Si aici emailul se completeaza singur.
+//
+//  ATENTIE (bug-uri reparate, a nu se reintroduce):
+//   - `setState` trebuie sa primeasca un BLOC, nu `=>` cu o atribuire care
+//     intoarce un Future: altfel Flutter opreste ecranul cu eroarea rosie.
+//   - Valorile implicite ale campurilor de text se pun DUPA ce vin datele,
+//     niciodata in timpul unui `build`.
+//   - Cererile catre server se fac in PARALEL si un comutator apasat nu mai
+//     blocheaza tot ecranul: reactia trebuie sa fie imediata.
+// ===========================================================================
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/utils/format.dart';
 import '../../core/widgets/failsafe_error_state.dart';
 import '../../data/models/portal_config.dart';
+import '../../data/notification_prefs.dart';
 import '../../data/repositories/aci_repository.dart';
+import '../../services/background_sync.dart';
 import '../../services/notification_service.dart';
+import '../../state/account_provider.dart';
 
 class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
@@ -15,12 +39,32 @@ class SettingsView extends StatefulWidget {
 }
 
 class _SettingsViewState extends State<SettingsView> {
-  String _sendMode = 'EMAIL';
-  final _sendValue = TextEditingController();
-  final _companyPhone = TextEditingController();
-  bool _accepted = false;
-  bool _busy = false;
+  final _email = TextEditingController();
+  final _phone = TextEditingController();
+
   Future<_SettingsData>? _future;
+  _SettingsData? _data;
+
+  // Preferintele locale (notificari pe telefon).
+  NotificationPrefs _prefs =
+      NotificationPrefsStore.cached ?? const NotificationPrefs();
+
+  // Starea permisiunilor de notificare, ca sa avertizam doar cand chiar e cazul.
+  NotificationDiagnostics? _notifications;
+
+  // Ce randuri sunt in curs de salvare. Doar acelea se blocheaza - restul
+  // ecranului ramane folosibil.
+  final Set<String> _saving = {};
+
+  // Valorile apasate acum, pana confirma serverul.
+  final Map<String, bool> _pending = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrefs();
+    _refreshNotificationStatus();
+  }
 
   @override
   void didChangeDependencies() {
@@ -30,481 +74,592 @@ class _SettingsViewState extends State<SettingsView> {
 
   @override
   void dispose() {
-    _sendValue.dispose();
-    _companyPhone.dispose();
+    _email.dispose();
+    _phone.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Column(
-        children: [
-          const TabBar(
-            tabs: [
-              Tab(text: 'Factura prin email/SMS'),
-              Tab(text: 'Notificari aplicatie'),
-            ],
-          ),
-          Expanded(
-            child: FutureBuilder<_SettingsData>(
-              future: _future,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return _errorState(snapshot.error.toString());
-                }
-                final data = snapshot.data ?? const _SettingsData();
-                _applyDefaults(data);
-                return TabBarView(
-                  children: [
-                    _invoiceTab(data),
-                    _alertsTab(data),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _invoiceTab(_SettingsData data) {
-    final configs = data.invoiceConfigs;
-    return RefreshIndicator(
-      onRefresh: _reload,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          ..._warningCards(data.invoiceWarnings),
-          DropdownButtonFormField<String>(
-            initialValue: _sendMode,
-            decoration: const InputDecoration(
-              labelText: 'Mod Trimitere',
-              border: OutlineInputBorder(),
-            ),
-            items: const [
-              DropdownMenuItem(value: 'EMAIL', child: Text('Email')),
-              DropdownMenuItem(value: 'SMS', child: Text('SMS')),
-            ],
-            onChanged: _busy
-                ? null
-                : (v) {
-                    setState(() {
-                      _sendMode = v ?? 'EMAIL';
-                      _future = _load();
-                    });
-                  },
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _sendValue,
-            enabled: !_busy,
-            keyboardType: _sendMode == 'EMAIL'
-                ? TextInputType.emailAddress
-                : TextInputType.phone,
-            decoration: InputDecoration(
-              labelText: _sendMode == 'EMAIL' ? 'Adresa Mail' : 'Telefon',
-              border: const OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 8),
-          CheckboxListTile(
-            value: _accepted,
-            onChanged:
-                _busy ? null : (v) => setState(() => _accepted = v ?? false),
-            title: const Text('Accept Conditii de activare factura*'),
-            controlAffinity: ListTileControlAffinity.leading,
-          ),
-          const SizedBox(height: 8),
-          Row(
+    return FutureBuilder<_SettingsData>(
+      future: _future,
+      builder: (context, snapshot) {
+        final data = snapshot.data ?? _data;
+        if (data == null) {
+          if (snapshot.hasError) {
+            return FailsafeErrorState(
+              error: snapshot.error.toString(),
+              onReload: _reload,
+            );
+          }
+          return const Center(child: CircularProgressIndicator());
+        }
+        return RefreshIndicator(
+          onRefresh: _reload,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
             children: [
-              Expanded(
-                child: FilledButton(
-                  onPressed: _accepted && !_busy ? _activateInvoice : null,
-                  child: Text(_busy ? 'Se salveaza...' : 'Activeaza'),
+              ..._warningCards(data.warnings),
+              _phoneSection(data),
+              const SizedBox(height: 8),
+              _invoiceSection(data),
+              const SizedBox(height: 8),
+              _alertsSection(data),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ============================================ 1. NOTIFICARI PE TELEFON
+  Widget _phoneSection(_SettingsData data) {
+    final blocked = _notifications != null && !_notifications!.permissionGranted;
+
+    return _card(
+      icon: Icons.notifications_active_outlined,
+      title: 'Notificari pe telefon',
+      subtitle: 'Ajung direct in aplicatie, gratuit, fara email si fara SMS.',
+      children: [
+        if (blocked) _permissionWarning(),
+        _prefSwitch(
+          title: 'Cand se emite o factura noua',
+          subtitle: 'Aplicatia verifica singura, si cand e inchisa.',
+          value: _prefs.newInvoice,
+          onChanged: (v) => _savePrefs(_prefs.copyWith(newInvoice: v)),
+        ),
+        _prefSwitch(
+          title: 'Inainte de scadenta facturii',
+          subtitle: 'Cu 3 zile inainte, la ora 9:00.',
+          value: _prefs.invoiceDue,
+          onChanged: (v) => _savePrefs(_prefs.copyWith(invoiceDue: v)),
+        ),
+        _prefSwitch(
+          title: 'Cand incepe perioada de index',
+          subtitle: 'In prima zi in care poti transmite indexul.',
+          value: _prefs.indexWindow,
+          onChanged: (v) => _savePrefs(_prefs.copyWith(indexWindow: v)),
+        ),
+      ],
+    );
+  }
+
+  Widget _permissionWarning() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.orange.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Notificarile sunt oprite din setarile telefonului. '
+                  'Pana le permiti, nu iti putem trimite nimic.',
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: configs.isNotEmpty && !_busy
-                      ? () => _deactivateInvoice(configs.first)
-                      : null,
-                  child: const Text('Dezactiveaza'),
-                ),
+              const SizedBox(width: 8),
+              FilledButton.tonal(
+                onPressed: _requestPermissions,
+                child: const Text('Permite'),
               ),
             ],
           ),
-          const Divider(height: 32),
-          if (configs.isEmpty)
-            const Text('Nu exista configurare activa pentru modul selectat.')
-          else
-            for (final config in configs)
-              Card(
-                child: ListTile(
-                  leading: Icon(
-                    _sendMode == 'EMAIL'
-                        ? Icons.email_outlined
-                        : Icons.sms_outlined,
-                    color: const Color(0xFF335C80),
-                  ),
-                  title: Text(config.destination),
-                  subtitle: Text(
-                    config.operationDate == null
-                        ? 'Data Operatie: -'
-                        : 'Data Operatie: ${dmy(config.operationDate!)}',
-                  ),
-                  trailing: IconButton(
-                    tooltip: 'Dezactiveaza',
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: _busy ? null : () => _deactivateInvoice(config),
-                  ),
-                ),
-              ),
-          const SizedBox(height: 16),
-          FilledButton.tonalIcon(
-            onPressed: () => NotificationService.instance.showTest(),
-            icon: const Icon(Icons.notifications_active),
-            label: const Text('Trimite notificare de test'),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _alertsTab(_SettingsData data) {
-    return RefreshIndicator(
-      onRefresh: _reload,
-      child: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        children: [
-          ..._warningCards(data.alertWarnings, horizontal: 16),
+  // ========================================= 2. FACTURA DE LA APA ILFOV
+  Widget _invoiceSection(_SettingsData data) {
+    final byEmail = _pending['invoice:EMAIL'] ?? data.emailConfigs.isNotEmpty;
+    final bySms = _pending['invoice:SMS'] ?? data.smsConfigs.isNotEmpty;
+
+    return _card(
+      icon: Icons.receipt_long_outlined,
+      title: 'Factura de la Apa Ilfov',
+      subtitle: 'Datele de contact sunt completate automat. '
+          'Le poti schimba oricand.',
+      children: [
+        _contactField(
+          controller: _email,
+          label: 'Adresa de email',
+          helper: data.email == null
+              ? 'Scrie adresa pe care vrei sa primesti factura.'
+              : 'Completata automat din contul cu care te-ai autentificat.',
+          keyboardType: TextInputType.emailAddress,
+        ),
+        _serverSwitch(
+          key: 'invoice:EMAIL',
+          title: 'Primesc factura pe email',
+          subtitle: 'Documentul fiscal, trimis de Apa Ilfov.',
+          value: byEmail,
+          onChanged: (v) =>
+              _toggleInvoiceDelivery('EMAIL', v, _email.text.trim(), data),
+        ),
+        const SizedBox(height: 4),
+        // Numarul de telefon se poate scrie MEREU. Daca ar aparea doar cu SMS-ul
+        // pornit, userul n-ar avea cum sa porneasca SMS-ul: activarea cere un
+        // numar, iar numarul nu se putea completa nicaieri.
+        _contactField(
+          controller: _phone,
+          label: 'Nr. telefon',
+          helper: 'Necesar doar daca vrei SMS-uri.',
+          keyboardType: TextInputType.phone,
+        ),
+        _serverSwitch(
+          key: 'invoice:SMS',
+          title: 'Primesc factura prin SMS',
+          subtitle: 'Optional, doar daca preferi SMS in loc de email.',
+          value: bySms,
+          onChanged: (v) =>
+              _toggleInvoiceDelivery('SMS', v, _phone.text.trim(), data),
+        ),
+      ],
+    );
+  }
+
+  Widget _contactField({
+    required TextEditingController controller,
+    required String label,
+    required String helper,
+    required TextInputType keyboardType,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 4),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          labelText: label,
+          helperText: helper,
+          helperMaxLines: 2,
+          border: const OutlineInputBorder(),
+        ),
+        onChanged: (_) => setState(() {}),
+      ),
+    );
+  }
+
+  // ================================ 3. ALERTE SI INFORMARI DE LA COMPANIE
+  Widget _alertsSection(_SettingsData data) {
+    final company = data.companyNotification;
+    // Folosim exact ce scrie in campurile de mai sus - userul nu mai introduce
+    // aceleasi date de doua ori.
+    final email = _email.text.trim().isEmpty ? null : _email.text.trim();
+
+    return _card(
+      icon: Icons.campaign_outlined,
+      title: 'Alerte si informari de la Apa Ilfov',
+      subtitle: 'Trimise de companie. Folosesc emailul si telefonul '
+          'completate mai sus.',
+      children: [
+        if (data.alerts.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Contul nu are alerte configurabile. Trage in jos pentru '
+              'reincarcare.',
+            ),
+          )
+        else
           for (final alert in data.alerts)
-            SwitchListTile(
-              value: alert.active,
-              onChanged: _busy
-                  ? null
-                  : (v) => v
-                      ? _activateAlert(alert)
-                      : _saveAlert(alert.copyWith(active: false)),
-              title: Text(_alertTitle(alert)),
-              subtitle: Text(
-                [
-                  if ((alert.email ?? '').isNotEmpty) alert.email!,
-                  if ((alert.phone ?? '').isNotEmpty) alert.phone!,
-                ].join(' / '),
-              ),
+            _serverSwitch(
+              key: 'alert:${alert.code}',
+              title: _alertTitle(alert),
+              subtitle: _alertSubtitle(alert, email),
+              value: _pending['alert:${alert.code}'] ?? alert.active,
+              onChanged: (v) => _toggleAlert(alert, v, email),
             ),
-          const Divider(height: 24),
-          SwitchListTile(
-            value: data.companyNotification?.emailAccepted ?? false,
-            onChanged: _busy
-                ? null
-                : (v) => _saveCompanyNotification(
-                      (data.companyNotification ??
-                              const CompanyNotificationConfig(
-                                emailAccepted: false,
-                                smsAccepted: false,
-                              ))
-                          .copyWith(emailAccepted: v),
-                    ),
-            title: const Text('Accept sa primesc e-mail'),
-            subtitle: const Text('Notificari companie'),
+        const Divider(height: 24),
+        _serverSwitch(
+          key: 'company:email',
+          title: 'Anunturi generale pe email',
+          subtitle: email ?? '-',
+          value: _pending['company:email'] ??
+              (company?.emailAccepted ?? false),
+          enabled: email != null,
+          onChanged: (v) => _saveCompany(
+            _companyBase(company).copyWith(emailAccepted: v),
+            key: 'company:email',
+            value: v,
           ),
-          SwitchListTile(
-            value: data.companyNotification?.smsAccepted ?? false,
-            onChanged: _busy
-                ? null
-                : (v) => _saveCompanyNotification(
-                      (data.companyNotification ??
-                              const CompanyNotificationConfig(
-                                emailAccepted: false,
-                                smsAccepted: false,
-                              ))
-                          .copyWith(
-                        smsAccepted: v,
-                        phone: v ? _companyPhone.text.trim() : null,
-                      ),
-                    ),
-            title: const Text('Accept sa primesc telefon'),
-            subtitle: const Text('Notificari companie prin SMS'),
+        ),
+        _serverSwitch(
+          key: 'company:sms',
+          title: 'Anunturi generale prin SMS',
+          subtitle: 'Foloseste numarul de mai sus.',
+          value: _pending['company:sms'] ?? (company?.smsAccepted ?? false),
+          onChanged: (v) => _saveCompany(
+            _companyBase(company).copyWith(smsAccepted: v),
+            key: 'company:sms',
+            value: v,
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: TextField(
-              controller: _companyPhone,
-              enabled:
-                  !_busy && (data.companyNotification?.smsAccepted ?? false),
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'Nr. telefon',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  void _applyDefaults(_SettingsData data) {
-    if (_sendValue.text.isEmpty && data.invoiceConfigs.isNotEmpty) {
-      _sendValue.text = data.invoiceConfigs.first.destination;
-    }
-    final phone = data.companyNotification?.phone;
-    if (_companyPhone.text.isEmpty && phone != null) _companyPhone.text = phone;
-  }
-
-  Future<_SettingsData> _load() async {
-    final repo = context.read<ACIRepository>();
-    final invoiceWarnings = <String>[];
-    final alertWarnings = <String>[];
-    var invoiceConfigs = <InvoiceDeliveryConfig>[];
-    var alerts = <AlertConfig>[];
-    CompanyNotificationConfig? companyNotification;
-
-    try {
-      invoiceConfigs = await repo.getInvoiceDeliveryConfigs(_sendMode);
-    } catch (e) {
-      invoiceWarnings.add(
-        'Configurarea facturii nu poate fi citita acum: ${SessionFailsafe.friendlyMessage(e)}',
-      );
-    }
-
-    try {
-      alerts = await repo.getAlertConfigs();
-    } catch (e) {
-      alertWarnings.add(
-        'Alertele aplicatiei nu pot fi citite acum: ${SessionFailsafe.friendlyMessage(e)}',
-      );
-    }
-
-    try {
-      companyNotification = await repo.getCompanyNotificationConfig();
-    } catch (e) {
-      companyNotification = null;
-      alertWarnings.add(
-        'Preferintele de notificari companie nu pot fi citite acum: ${SessionFailsafe.friendlyMessage(e)}',
-      );
-    }
-    return _SettingsData(
-      invoiceConfigs: invoiceConfigs,
-      alerts: alerts,
-      companyNotification: companyNotification,
-      invoiceWarnings: invoiceWarnings,
-      alertWarnings: alertWarnings,
-    );
-  }
-
-  Future<void> _reload() async {
-    setState(() => _future = _load());
-    await _future;
-  }
-
-  Future<void> _activateInvoice() async {
-    final destination = _sendValue.text.trim();
-    if (destination.isEmpty) {
-      _snack('Completeaza adresa sau telefonul.');
-      return;
-    }
-    await _run(
-      () => context.read<ACIRepository>().activateInvoiceDelivery(
-            mode: _sendMode,
-            destination: destination,
-          ),
-      success: 'Configurarea a fost activata.',
-    );
-    if (mounted) setState(() => _accepted = false);
-  }
-
-  Future<void> _deactivateInvoice(InvoiceDeliveryConfig config) async {
-    final ok = await _confirm('Dezactivezi configurarea selectata?');
-    if (!ok) return;
-    await _run(
-      () => context.read<ACIRepository>().deactivateInvoiceDelivery(
-            mode: _sendMode,
-            config: config,
-          ),
-      success: 'Configurarea a fost dezactivata.',
-    );
-  }
-
-  Future<void> _saveAlert(AlertConfig config) async {
-    await _run(
-      () => context.read<ACIRepository>().saveAlertConfig(config),
-      success: 'Alerta a fost salvata.',
-    );
-  }
-
-  Future<void> _activateAlert(AlertConfig alert) async {
-    final email = TextEditingController(text: alert.email ?? '');
-    final phone = TextEditingController(text: alert.phone ?? '');
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(_alertTitle(alert)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+  // ------------------------------------------------------------- bucatele UI
+  Widget _card({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required List<Widget> children,
+  }) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (alert.emailAllowed)
-              TextField(
-                controller: email,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Adresa email',
-                  border: OutlineInputBorder(),
+            Row(
+              children: [
+                Icon(icon, color: theme.colorScheme.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(title, style: theme.textTheme.titleMedium),
                 ),
-              ),
-            if (alert.emailAllowed && alert.smsAllowed)
-              const SizedBox(height: 12),
-            if (alert.smsAllowed)
-              TextField(
-                controller: phone,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Nr. telefon',
-                  border: OutlineInputBorder(),
-                ),
-              ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(subtitle, style: theme.textTheme.bodySmall),
+            const SizedBox(height: 6),
+            ...children,
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Anuleaza'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Salveaza'),
-          ),
-        ],
       ),
     );
-    final updated = ok == true
-        ? alert.copyWith(
-            active: true,
-            email: email.text.trim().isEmpty ? null : email.text.trim(),
-            phone: phone.text.trim().isEmpty ? null : phone.text.trim(),
-          )
-        : null;
-    email.dispose();
-    phone.dispose();
-    if (updated == null) return;
-    if ((updated.email ?? '').isEmpty && (updated.phone ?? '').isEmpty) {
-      _snack('Completeaza emailul sau telefonul pentru alerta.');
-      return;
-    }
-    await _saveAlert(updated);
   }
 
-  Future<void> _saveCompanyNotification(
-    CompanyNotificationConfig config,
-  ) async {
-    if (config.smsAccepted && (_companyPhone.text.trim().isEmpty)) {
-      _snack('Completeaza numarul de telefon.');
-      return;
-    }
-    await _run(
-      () => context.read<ACIRepository>().saveCompanyNotificationConfig(
-            config.copyWith(phone: _companyPhone.text.trim()),
-          ),
-      success: 'Preferintele au fost salvate.',
+  // Comutator pentru o preferinta LOCALA: reactioneaza instant, nu asteapta
+  // niciun server.
+  Widget _prefSwitch({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return SwitchListTile(
+      contentPadding: EdgeInsets.zero,
+      value: value,
+      onChanged: onChanged,
+      title: Text(title),
+      subtitle: Text(subtitle),
     );
   }
 
-  Future<void> _run(
-    Future<void> Function() action, {
-    required String success,
-  }) async {
-    setState(() => _busy = true);
-    try {
-      await action();
-      if (mounted) _snack(success);
-      await _reload();
-    } catch (e) {
-      if (mounted) _snack(_cleanError(e));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+  // Comutator legat de server: se blocheaza DOAR el cat dureaza salvarea.
+  Widget _serverSwitch({
+    required String key,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    bool enabled = true,
+  }) {
+    final busy = _saving.contains(key);
+    return SwitchListTile(
+      contentPadding: EdgeInsets.zero,
+      value: value,
+      onChanged: (enabled && !busy) ? onChanged : null,
+      title: Text(title),
+      subtitle: Text(subtitle),
+      secondary: busy
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : null,
+    );
   }
 
-  Future<bool> _confirm(String message) async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Confirmare'),
-            content: Text(message),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Nu'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Da'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-  }
-
-  Widget _errorState(String error) {
-    return FailsafeErrorState(error: error, onReload: _reload);
-  }
-
-  List<Widget> _warningCards(List<String> warnings, {double horizontal = 0}) {
+  List<Widget> _warningCards(List<String> warnings) {
     if (warnings.isEmpty) return const [];
     return [
       for (final warning in warnings)
         Padding(
-          padding: EdgeInsets.fromLTRB(horizontal, 0, horizontal, 12),
+          padding: const EdgeInsets.only(bottom: 12),
           child: Card(
-            color: Colors.orange.shade50,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  leading: Icon(
-                    Icons.info_outline,
-                    color: Colors.orange.shade900,
-                  ),
-                  title: Text(warning),
-                  subtitle: const Text(
-                    'Daca serverul refuza accesul, restul aplicatiei ramane functional.',
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: FilledButton.tonalIcon(
-                      onPressed: () => SessionFailsafe.reloadOrLogout(
-                        context,
-                        error: warning,
-                        onReload: _reload,
-                      ),
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Reincarca'),
-                    ),
-                  ),
-                ),
-              ],
+            color: Colors.orange.shade50.withValues(alpha: 0.85),
+            child: ListTile(
+              leading: Icon(Icons.info_outline, color: Colors.orange.shade900),
+              title: Text(warning),
+              trailing: IconButton(
+                tooltip: 'Reincarca',
+                icon: const Icon(Icons.refresh),
+                onPressed: _reload,
+              ),
             ),
           ),
         ),
     ];
   }
 
-  void _snack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  // ------------------------------------------------------------- preferinte
+  Future<void> _loadPrefs() async {
+    final prefs = await NotificationPrefsStore.read();
+    if (mounted) setState(() => _prefs = prefs);
   }
 
+  Future<void> _savePrefs(NotificationPrefs prefs) async {
+    // Comutatorul se misca imediat: nu depinde de nicio cerere de retea.
+    setState(() => _prefs = prefs);
+    await NotificationPrefsStore.write(prefs);
+    // Reasezam reamintirile si pornim/oprim verificarea din fundal.
+    await BackgroundSync.syncWithPrefs(prefs);
+    if (!mounted) return;
+    try {
+      await context.read<AccountProvider>().refreshNotificationPlan();
+    } catch (_) {
+      // Datele contului poate nu sunt inca incarcate; nu e o problema.
+    }
+    if (mounted) await _refreshNotificationStatus();
+  }
+
+  Future<void> _refreshNotificationStatus() async {
+    final status = await NotificationService.instance.diagnostics();
+    if (mounted) setState(() => _notifications = status);
+  }
+
+  Future<void> _requestPermissions() async {
+    final status = await NotificationService.instance.requestPermissions();
+    if (mounted) setState(() => _notifications = status);
+  }
+
+  // ------------------------------------------------------------------ date
+  CompanyNotificationConfig _companyBase(CompanyNotificationConfig? current) {
+    return current ??
+        const CompanyNotificationConfig(
+          emailAccepted: false,
+          smsAccepted: false,
+        );
+  }
+
+  Future<_SettingsData> _load() async {
+    final repo = context.read<ACIRepository>();
+    final warnings = <String>[];
+
+    // TOATE cererile pornesc odata. Inainte mergeau una dupa alta si ecranul
+    // parea blocat cateva secunde la fiecare apasare.
+    final results = await Future.wait([
+      _safe(() => repo.getSessionEmail(), warnings, null),
+      _safe(() => repo.getInvoiceDeliveryConfigs('EMAIL'), warnings,
+          <InvoiceDeliveryConfig>[], 'Configurarea facturii pe email'),
+      _safe(() => repo.getInvoiceDeliveryConfigs('SMS'), warnings,
+          <InvoiceDeliveryConfig>[], 'Configurarea facturii prin SMS'),
+      _safe(() => repo.getAlertConfigs(), warnings, <AlertConfig>[],
+          'Alertele companiei'),
+      _safe(() => repo.getCompanyNotificationConfig(), warnings, null,
+          'Preferintele de informari'),
+    ]);
+
+    final data = _SettingsData(
+      email: results[0] as String?,
+      emailConfigs: results[1] as List<InvoiceDeliveryConfig>,
+      smsConfigs: results[2] as List<InvoiceDeliveryConfig>,
+      alerts: results[3] as List<AlertConfig>,
+      companyNotification: results[4] as CompanyNotificationConfig?,
+      warnings: warnings,
+    );
+
+    // Datele proaspete inlocuiesc valorile "in asteptare".
+    _pending.clear();
+    _applyDefaults(data);
+    _data = data;
+    return data;
+  }
+
+  // Ruleaza o cerere si, daca esueaza, adauga un avertisment in loc sa darame
+  // tot ecranul.
+  Future<Object?> _safe(
+    Future<Object?> Function() action,
+    List<String> warnings,
+    Object? fallback, [
+    String? label,
+  ]) async {
+    try {
+      return await action();
+    } catch (e) {
+      if (label != null) {
+        warnings.add(
+          '$label nu poate fi citita acum: '
+          '${SessionFailsafe.friendlyMessage(e)}',
+        );
+      }
+      return fallback;
+    }
+  }
+
+  // Se apeleaza DUPA ce vin datele, niciodata in timpul unui `build`.
+  void _applyDefaults(_SettingsData data) {
+    // Emailul: intai cel din sesiunea portalului (adica exact cel cu care
+    // te-ai autentificat), apoi cel deja configurat pentru factura.
+    if (_email.text.isEmpty) {
+      final configured = data.emailConfigs.isNotEmpty
+          ? data.emailConfigs.first.destination
+          : null;
+      final email = data.email ?? configured ?? '';
+      if (email.isNotEmpty) _email.text = email;
+    }
+
+    if (_phone.text.isEmpty) {
+      final fromSms =
+          data.smsConfigs.isNotEmpty ? data.smsConfigs.first.destination : null;
+      final fromCompany = data.companyNotification?.phone;
+      final phone = (fromSms != null && fromSms.isNotEmpty)
+          ? fromSms
+          : (fromCompany ?? '');
+      if (phone.isNotEmpty) _phone.text = phone;
+    }
+  }
+
+  Future<void> _reload() async {
+    setState(() {
+      _future = _load();
+    });
+    await _future;
+  }
+
+  // Reincarca datele fara sa acopere ecranul cu rotita: pastram ce e afisat.
+  Future<void> _reloadSilently() async {
+    try {
+      final data = await _load();
+      if (mounted) {
+        setState(() {
+          _data = data;
+          _future = Future.value(data);
+        });
+      }
+    } catch (_) {
+      // Ramanem pe ultimele date bune.
+    }
+  }
+
+  // --------------------------------------------------------------- actiuni
+  Future<void> _toggleInvoiceDelivery(
+    String mode,
+    bool value,
+    String? destination,
+    _SettingsData data,
+  ) async {
+    final key = 'invoice:$mode';
+    final target = (destination ?? '').trim();
+    if (value && target.isEmpty) {
+      _snack(mode == 'EMAIL'
+          ? 'Completeaza adresa de email.'
+          : 'Completeaza numarul de telefon.');
+      return;
+    }
+    final configs = mode == 'EMAIL' ? data.emailConfigs : data.smsConfigs;
+
+    await _runFor(
+      key,
+      value,
+      () async {
+        final repo = context.read<ACIRepository>();
+        if (value) {
+          await repo.activateInvoiceDelivery(mode: mode, destination: target);
+        } else {
+          for (final config in configs) {
+            await repo.deactivateInvoiceDelivery(mode: mode, config: config);
+          }
+        }
+      },
+      success: value
+          ? 'Vei primi factura ${mode == 'EMAIL' ? 'pe email' : 'prin SMS'}.'
+          : 'Trimiterea a fost oprita.',
+    );
+  }
+
+  // Activarea unei alerte NU mai deschide niciun dialog: emailul vine din
+  // sesiune, iar telefonul din campul de mai sus.
+  Future<void> _toggleAlert(AlertConfig alert, bool value, String? email) async {
+    final phone = _phone.text.trim();
+    final useEmail = alert.emailAllowed ? email : null;
+    final usePhone = alert.smsAllowed && phone.isNotEmpty ? phone : null;
+
+    if (value && useEmail == null && usePhone == null) {
+      _snack('Completeaza numarul de telefon pentru aceasta alerta.');
+      return;
+    }
+
+    await _runFor(
+      'alert:${alert.code}',
+      value,
+      () => context.read<ACIRepository>().saveAlertConfig(
+            alert.withContacts(
+              active: value,
+              email: value ? useEmail : alert.email,
+              phone: value ? usePhone : alert.phone,
+            ),
+          ),
+      success: value ? 'Alerta a fost activata.' : 'Alerta a fost oprita.',
+    );
+  }
+
+  Future<void> _saveCompany(
+    CompanyNotificationConfig config, {
+    required String key,
+    required bool value,
+  }) async {
+    final phone = _phone.text.trim();
+    if (config.smsAccepted && phone.isEmpty) {
+      _snack('Completeaza numarul de telefon.');
+      return;
+    }
+    await _runFor(
+      key,
+      value,
+      () => context.read<ACIRepository>().saveCompanyNotificationConfig(
+            config.withPhone(config.smsAccepted ? phone : null),
+          ),
+      success: 'Preferintele au fost salvate.',
+    );
+  }
+
+  // Ruleaza o salvare aratand rotita DOAR pe randul apasat.
+  Future<void> _runFor(
+    String key,
+    bool optimisticValue,
+    Future<void> Function() action, {
+    required String success,
+  }) async {
+    setState(() {
+      _pending[key] = optimisticValue; // comutatorul se misca imediat
+      _saving.add(key);
+    });
+    var ok = true;
+    try {
+      await action();
+    } catch (e) {
+      ok = false;
+      if (mounted) {
+        _pending.remove(key); // punem comutatorul inapoi cum era
+        _snack(e.toString().replaceFirst('Exception: ', ''));
+      }
+    } finally {
+      if (mounted) setState(() => _saving.remove(key));
+    }
+    if (ok && mounted) _snack(success);
+    // Confirmam cu serverul, dar fara sa acoperim ecranul.
+    if (mounted) await _reloadSilently();
+  }
+
+  void _snack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  // ------------------------------------------------------------- etichete
   String _alertTitle(AlertConfig alert) {
     final code = alert.code.toUpperCase();
     final label = alert.label.toUpperCase();
@@ -514,14 +669,24 @@ class _SettingsViewState extends State<SettingsView> {
     if (code.contains('SCADENTA_AUTOCIT') || label.contains('AUTOCIT')) {
       return 'Scadenta autocitire';
     }
-    if ((code.contains('INDEX') || label.contains('INDEX')) ||
+    if (code.contains('INDEX') ||
+        label.contains('INDEX') ||
         code.contains('TRANSMITERE')) {
       return 'Perioada trimitere index';
     }
-    return _humanizeAlertText(alert.label.isEmpty ? alert.code : alert.label);
+    return _humanize(alert.label.isEmpty ? alert.code : alert.label);
   }
 
-  String _humanizeAlertText(String value) {
+  String _alertSubtitle(AlertConfig alert, String? email) {
+    final channels = <String>[
+      if (alert.emailAllowed && email != null) email,
+      if (alert.smsAllowed && _phone.text.trim().isNotEmpty) _phone.text.trim(),
+    ];
+    if (channels.isEmpty) return 'Completeaza un telefon pentru aceasta alerta.';
+    return channels.join(' / ');
+  }
+
+  String _humanize(String value) {
     final text = value
         .replaceAll(RegExp(r'[_-]+'), ' ')
         .replaceAll(RegExp(r'\s+'), ' ')
@@ -530,22 +695,22 @@ class _SettingsViewState extends State<SettingsView> {
     if (text.isEmpty) return '';
     return text[0].toUpperCase() + text.substring(1);
   }
-
-  String _cleanError(Object e) => e.toString().replaceFirst('Exception: ', '');
 }
 
 class _SettingsData {
-  final List<InvoiceDeliveryConfig> invoiceConfigs;
+  final String? email;
+  final List<InvoiceDeliveryConfig> emailConfigs;
+  final List<InvoiceDeliveryConfig> smsConfigs;
   final List<AlertConfig> alerts;
   final CompanyNotificationConfig? companyNotification;
-  final List<String> invoiceWarnings;
-  final List<String> alertWarnings;
+  final List<String> warnings;
 
   const _SettingsData({
-    this.invoiceConfigs = const [],
+    this.email,
+    this.emailConfigs = const [],
+    this.smsConfigs = const [],
     this.alerts = const [],
     this.companyNotification,
-    this.invoiceWarnings = const [],
-    this.alertWarnings = const [],
+    this.warnings = const [],
   });
 }

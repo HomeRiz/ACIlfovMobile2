@@ -22,7 +22,9 @@ import 'package:provider/provider.dart';
 import 'app.dart';
 import 'data/repositories/aci_repository.dart';
 import 'data/repositories/repository_factory.dart';
+import 'services/background_sync.dart';
 import 'services/notification_service.dart';
+import 'services/notification_watchdog.dart';
 import 'state/accessibility_provider.dart';
 import 'state/account_provider.dart';
 import 'state/auth_provider.dart';
@@ -61,6 +63,11 @@ Future<void> main() async {
 Future<void> _initNotifications() async {
   try {
     await NotificationService.instance.init();
+    // Cainele de paza verifica periodic ca reamintirile chiar sunt programate
+    // in sistem si le repara daca telefonul le-a amanat sau sters.
+    await NotificationWatchdog.instance.start();
+    // Verificarea facturilor noi, care ruleaza si cu aplicatia inchisa.
+    await BackgroundSync.start();
   } catch (error, stackTrace) {
     FlutterError.reportError(
       FlutterErrorDetails(

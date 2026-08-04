@@ -139,6 +139,9 @@ class ApiACIRepository implements ACIRepository {
   }
 
   @override
+  Future<String?> getSessionEmail() async => null;
+
+  @override
   Future<List<InvoiceDeliveryConfig>> getInvoiceDeliveryConfigs(String mode) {
     throw UnimplementedError('API-ul oficial Apa Ilfov nu este configurat.');
   }

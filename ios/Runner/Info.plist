@@ -65,5 +65,18 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- VERIFICAREA FACTURILOR IN FUNDAL (workmanager).
+	     iOS porneste aplicatia din cand in cand, cateva secunde, ca sa intrebe
+	     portalul daca a aparut o factura noua. Identificatorul de mai jos
+	     trebuie sa fie IDENTIC cu cel din background_sync.dart. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>acilfov-verifica-facturi-periodic</string>
+	</array>
 </dict>
 </plist>

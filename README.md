@@ -23,7 +23,10 @@ Aplicatia include:
 
 - autentificare prin portalul oficial ACIlfov/EMSYS;
 - interfata nativa pentru acasa, facturi, plati, consum, index, configurari, contact si informatii cont;
-- notificari locale pentru index si facturi scadente;
+- notificari locale pentru index si facturi scadente, cu verificare automata
+  ("caine de paza") care reprogrameaza reamintirile pierdute de telefon si le
+  trimite pe cele intarziate de economisirea bateriei;
+- fundaluri decorative estompate, cate unul pentru fiecare pagina din meniu;
 - stocare securizata pentru cookie-ul de sesiune;
 - structura pregatita pentru trecerea la un API oficial cu token cand acesta va fi disponibil.
 
@@ -68,13 +71,15 @@ lib/
   main.dart                         punctul de pornire
   app.dart                          tema si rutarea login/aplicatie
   core/config/app_config.dart       URL-uri, culori si sursa de date
+  core/widgets/page_backdrop.dart   desenele decorative din fundalul paginilor
   data/models/                      modelele de date
   data/repositories/                surse mock/cookie/api
   data/sources/                     clienti HTTP pentru portal/API
   data/cookie_store.dart            acces si persistenta cookie sesiune
   data/secure_store.dart            stocare securizata pentru token viitor
   features/                         ecranele aplicatiei
-  services/notification_service.dart notificari locale
+  services/notification_service.dart notificari locale + planul de reamintiri
+  services/notification_watchdog.dart verifica si repara reamintirile programate
   state/                            Provider pentru auth si date cont
 ```
 

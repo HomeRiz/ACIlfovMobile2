@@ -67,6 +67,11 @@ abstract class ACIRepository {
   });
   Future<void> deleteClientCodes(List<String> clientCodes);
 
+  /// Emailul cu care s-a autentificat userul, luat din sesiunea portalului.
+  /// `null` daca sesiunea nu il ofera. Il folosim ca sa nu mai ceara nimeni
+  /// userului sa scrie aceeasi adresa la fiecare optiune de notificare.
+  Future<String?> getSessionEmail();
+
   Future<List<InvoiceDeliveryConfig>> getInvoiceDeliveryConfigs(String mode);
   Future<void> activateInvoiceDelivery({
     required String mode,

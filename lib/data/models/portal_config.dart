@@ -49,6 +49,26 @@ class AlertConfig {
       raw: raw,
     );
   }
+
+  // Copie in care emailul si telefonul iau EXACT valorile primite. Spre
+  // deosebire de copyWith, aici `null` chiar sterge valoarea veche - de asta e
+  // nevoie cand userul goleste campul din dialogul de alerte.
+  AlertConfig withContacts({
+    required bool active,
+    required String? email,
+    required String? phone,
+  }) {
+    return AlertConfig(
+      code: code,
+      label: label,
+      active: active,
+      email: email,
+      phone: phone,
+      emailAllowed: emailAllowed,
+      smsAllowed: smsAllowed,
+      raw: raw,
+    );
+  }
 }
 
 class CompanyNotificationConfig {
@@ -73,6 +93,16 @@ class CompanyNotificationConfig {
       emailAccepted: emailAccepted ?? this.emailAccepted,
       smsAccepted: smsAccepted ?? this.smsAccepted,
       phone: phone ?? this.phone,
+      raw: raw,
+    );
+  }
+
+  // Copie in care telefonul ia EXACT valoarea primita (`null` chiar sterge).
+  CompanyNotificationConfig withPhone(String? phone) {
+    return CompanyNotificationConfig(
+      emailAccepted: emailAccepted,
+      smsAccepted: smsAccepted,
+      phone: phone,
       raw: raw,
     );
   }

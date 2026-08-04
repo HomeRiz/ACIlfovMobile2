@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import UserNotifications
 import WebKit
 
 @main
@@ -13,7 +14,39 @@ import WebKit
     flutterEngine.run()
     GeneratedPluginRegistrant.register(with: flutterEngine)
     setupCookieChannel(binaryMessenger: flutterEngine.binaryMessenger)
+    setupSystemChannel(binaryMessenger: flutterEngine.binaryMessenger)
+
+    // Cerut de flutter_local_notifications: fara acest delegate, reamintirile
+    // recuperate de "cainele de paza" nu se afiseaza cand aplicatia e deschisa.
+    if #available(iOS 10.0, *) {
+      UNUserNotificationCenter.current().delegate = self as? UNUserNotificationCenterDelegate
+    }
+
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  // Ecranele de setari ale sistemului. Pe iOS totul (notificari incluse) se
+  // deschide din pagina aplicatiei din Setari.
+  private func setupSystemChannel(binaryMessenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(
+      name: "acilfov/system",
+      binaryMessenger: binaryMessenger
+    )
+
+    channel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "openNotificationSettings", "openBatterySettings":
+        guard let url = URL(string: UIApplication.openSettingsURLString),
+              UIApplication.shared.canOpenURL(url)
+        else {
+          result(false)
+          return
+        }
+        UIApplication.shared.open(url, options: [:]) { opened in result(opened) }
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
   }
 
   private func setupCookieChannel(binaryMessenger: FlutterBinaryMessenger) {

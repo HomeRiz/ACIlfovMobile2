@@ -77,7 +77,9 @@ class HomeView extends StatelessWidget {
     final balance = acc?.balance ?? 0;
     final due = balance < 0;
     return Card(
-      color: due ? const Color(0xFFFFEBEE) : const Color(0xFFE8F5E9),
+      // Semi-transparent, ca desenul casei din fundal sa se intrevada.
+      color: (due ? const Color(0xFFFFEBEE) : const Color(0xFFE8F5E9))
+          .withValues(alpha: 0.82),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(

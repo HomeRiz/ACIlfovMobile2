@@ -30,6 +30,12 @@ class AppTheme {
     );
 
     final isLight = brightness == Brightness.light;
+
+    // Cardurile sunt SEMI-TRANSPARENTE, ca desenul decorativ din spatele
+    // paginii sa se intrevada prin ele. La contrast marit revenim la opac,
+    // pentru ca acolo lizibilitatea e mai importanta decat efectul vizual.
+    final cardOpacity = highContrast ? 1.0 : 0.82;
+
     final base = ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
@@ -37,6 +43,21 @@ class AppTheme {
       appBarTheme: AppBarTheme(
         backgroundColor: isLight ? brand : scheme.surfaceContainerHighest,
         foregroundColor: isLight ? Colors.white : scheme.onSurface,
+      ),
+      cardTheme: CardThemeData(
+        color: scheme.surfaceContainerLow.withValues(alpha: cardOpacity),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: highContrast ? 1 : 0.6),
+          ),
+        ),
+      ),
+      // Casetele de text lasa si ele fundalul sa se vada.
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: scheme.surface.withValues(alpha: highContrast ? 1 : 0.72),
       ),
     );
 

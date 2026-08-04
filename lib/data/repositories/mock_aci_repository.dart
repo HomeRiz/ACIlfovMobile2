@@ -223,6 +223,9 @@ class MockACIRepository implements ACIRepository {
   }
 
   @override
+  Future<String?> getSessionEmail() async => 'client.demo@exemplu.ro';
+
+  @override
   Future<List<InvoiceDeliveryConfig>> getInvoiceDeliveryConfigs(
     String mode,
   ) async {

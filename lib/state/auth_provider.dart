@@ -15,6 +15,7 @@ import 'package:flutter/foundation.dart';
 import '../data/cookie_store.dart';
 import '../data/repositories/aci_repository.dart';
 import '../data/secure_store.dart';
+import '../services/background_sync.dart';
 
 class AuthProvider extends ChangeNotifier {
   AuthProvider(this._repo) {
@@ -48,6 +49,8 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     await SecureStore.clearToken();
     await CookieStore.clear();
+    // Fara sesiune, verificarea din fundal nu are ce sa intrebe portalul.
+    await BackgroundSync.stop();
     _loggedIn = false;
     notifyListeners();
   }

@@ -1,6 +1,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
 
+    <!-- NOTIFICARI LOCALE (reamintiri index / scadenta factura).
+         POST_NOTIFICATIONS      = Android 13+ cere permisiunea de la user.
+         SCHEDULE_EXACT_ALARM    = Android 12+ pentru alarme la ora fixa.
+         RECEIVE_BOOT_COMPLETED  = reprogramarea alarmelor dupa repornire.
+         WAKE_LOCK / VIBRATE     = livrarea notificarii cu ecranul stins. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+
     <application
         android:label="Apa Ilfov"
         android:name="${applicationName}"
@@ -37,6 +48,37 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- ============================================================
+             NOTIFICARI LOCALE - componentele cerute de
+             flutter_local_notifications.
+             Fara ele, alarmele programate DISPAR la repornirea telefonului
+             si notificarile nu mai ajung la user.
+             ============================================================ -->
+
+        <!-- Primeste alarma la ora programata si afiseaza notificarea, chiar
+             daca aplicatia nu ruleaza. -->
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
+            android:exported="false"/>
+
+        <!-- Reprogrameaza toate notificarile dupa repornirea telefonului sau
+             dupa o actualizare a aplicatiei. -->
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
+
+        <!-- Gestioneaza apasarea pe butoanele din notificare. -->
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver"
+            android:exported="false"/>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

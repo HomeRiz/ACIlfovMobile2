@@ -195,6 +195,9 @@ class CookieACIRepository implements ACIRepository {
   }
 
   @override
+  Future<String?> getSessionEmail() => _portal.sessionEmail();
+
+  @override
   Future<List<InvoiceDeliveryConfig>> getInvoiceDeliveryConfigs(
     String mode,
   ) async {

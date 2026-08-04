@@ -47,7 +47,11 @@ class _AccountInfoViewState extends State<AccountInfoView> {
   }
 
   void _reload() {
-    setState(() => _future = _load());
+    // Corpul lui setState trebuie sa fie un BLOC: cu `=>` closure-ul returneaza
+    // Future-ul si Flutter opreste ecranul cu eroare rosie.
+    setState(() {
+      _future = _load();
+    });
   }
 
   @override

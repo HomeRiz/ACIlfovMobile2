@@ -90,6 +90,33 @@ class PortalClient {
 
   Future<String> requireCodClient() async => (await identity()).codClient;
 
+  // Emailul cu care s-a logat userul. Portalul il tine in sesiune, deci nu mai
+  // e nevoie ca userul sa-l scrie de mana la fiecare optiune de notificare.
+  String? _sessionEmail;
+  bool _sessionEmailRead = false;
+
+  Future<String?> sessionEmail() async {
+    if (_sessionEmailRead) return _sessionEmail;
+    try {
+      final session = await postJson(AppConfig.emsysInfoSession, {});
+      if (session is Map) {
+        final value = _str(session.cast<String, dynamic>(), [
+          'email',
+          'userName',
+          'username',
+          'user',
+        ]);
+        // Portalul foloseste emailul drept nume de utilizator; verificam totusi
+        // ca seamana a adresa, ca sa nu completam un cod oarecare.
+        if (value != null && value.contains('@')) _sessionEmail = value.trim();
+      }
+    } catch (_) {
+      _sessionEmail = null;
+    }
+    _sessionEmailRead = true;
+    return _sessionEmail;
+  }
+
   // ---------------------------------------------------------------- sesiune
   // Cookie-ul de sesiune este citit din magazinul nativ WebView.
   Future<String> _cookie() async {

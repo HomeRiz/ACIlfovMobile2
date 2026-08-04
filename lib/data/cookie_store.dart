@@ -47,7 +47,19 @@ class CookieStore {
 
   // Intoarce sirul de cookie-uri gata de pus in antetul "Cookie:" al unei
   // cereri HTTP catre portal. Folosit de sursa "cookie".
-  static Future<String?> currentHeader(String url) => _readNative(url);
+  //
+  // In task-ul de FUNDAL nu exista WebView (ruleaza fara ecran), deci magazinul
+  // nativ e gol. De aceea cadem inapoi pe sesiunea salvata in seif - altfel
+  // verificarea facturilor cu aplicatia inchisa nu ar avea cum sa functioneze.
+  static Future<String?> currentHeader(String url) async {
+    final native = await _readNative(url);
+    if (native != null && native.isNotEmpty) return native;
+    try {
+      return await _storage.read(key: _key);
+    } catch (_) {
+      return null;
+    }
+  }
 
   // Salveaza cookie-ul de sesiune in seif (doar daca esti logat).
   static Future<void> save(String url) async {
