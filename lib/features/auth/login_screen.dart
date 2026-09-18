@@ -142,13 +142,53 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     await _controller.loadRequest(Uri.parse(target));
   }
 
+  // Buton pentru ACIlfov (sau pentru echipele de review App Store/Play
+  // Store, daca nu exista un cont real disponibil): intra direct in
+  // aplicatie cu date generate, fara sa treaca prin portalul real.
+  Future<void> _confirmEnterDemoMode() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Mod Verificare / Demo'),
+        content: const Text(
+          'Intri in aplicatie cu date generate (cont, facturi, consum, '
+          'index), fara sa te conectezi la portalul real ACIlfov. '
+          'Foloseste acest mod doar pentru a vedea functionalitatea '
+          'aplicatiei.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Anuleaza'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Continua'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      context.read<AuthProvider>().enterDemoMode();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final showError = !_online || _hasError;
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
-        title: Image.asset('assets/logo.png', height: 36),
+        // Tine-apasat pe logo intra in modul Verificare/Demo (vezi AppConfig.
+        // reviewDemoEnabled). Fara buton vizibil, ca sa nu fie un punct de
+        // intrare vizibil/tentant pentru userii reali - doar cine stie ca
+        // exista il foloseste.
+        title: AppConfig.reviewDemoEnabled
+            ? GestureDetector(
+                onLongPress: _confirmEnterDemoMode,
+                child: Image.asset('assets/logo.png', height: 36),
+              )
+            : Image.asset('assets/logo.png', height: 36),
         backgroundColor: const Color(0xFF335C80),
       ),
       body: Stack(

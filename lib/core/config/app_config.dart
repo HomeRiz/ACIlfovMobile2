@@ -28,6 +28,15 @@ class AppConfig {
   // sa nu existe doua setari care se pot contrazice.
   static bool get hasApi => dataSource == DataSource.api;
 
+  // ======================================================================
+  //  INTRERUPATOR PENTRU MODUL REVIEW / DEMO
+  //  Tine-apasat pe logo-ul din ecranul de login intra in aplicatie cu date
+  //  generate (fara cont real), pentru cine vrea sa vada functionalitatea
+  //  fara sa aiba un cont ACIlfov. Pune pe `false` ca sa scoti complet acest
+  //  punct de intrare din build (nu doar sa-l ascunzi) - o singura linie.
+  // ======================================================================
+  static const bool reviewDemoEnabled = true;
+
   // Adresele portalului oficial ACIlfov (folosite de ecranul de login WebView
   // si de sursa "cookie").
   static const String portalUrl = 'https://acilfov.emsys.ro/self_utilities/';

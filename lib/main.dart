@@ -21,7 +21,9 @@ import 'package:provider/provider.dart';
 
 import 'app.dart';
 import 'data/repositories/aci_repository.dart';
+import 'data/repositories/mock_aci_repository.dart';
 import 'data/repositories/repository_factory.dart';
+import 'data/repositories/switchable_aci_repository.dart';
 import 'services/background_sync.dart';
 import 'services/notification_service.dart';
 import 'services/notification_watchdog.dart';
@@ -38,7 +40,14 @@ Future<void> main() async {
   //  Ca sa schimbi sursa (mock / cookie / api), modifici o SINGURA valoare
   //  in lib/core/config/app_config.dart. Restul aplicatiei nu se atinge.
   // ----------------------------------------------------------------------
-  final ACIRepository repo = createRepository();
+  // "repo" e comutabil la runtime intre sursa reala si datele demo, ca
+  // butonul "Verificare / Demo" de pe ecranul de login sa poata intra in
+  // aplicatie cu date generate, fara sa repornim aplicatia sau sa atingem
+  // vreun ecran (toate citesc tot ACIRepository, ca inainte).
+  final repo = SwitchableACIRepository(
+    real: createRepository(),
+    demo: MockACIRepository(),
+  );
 
   runApp(
     // "MultiProvider" pune la dispozitia tuturor ecranelor: repository-ul,

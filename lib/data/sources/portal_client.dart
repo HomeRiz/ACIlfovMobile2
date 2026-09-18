@@ -146,7 +146,7 @@ class PortalClient {
   Future<String> getText(String url) async {
     final res = await _http.get(Uri.parse(url), headers: await _headers());
     if (res.statusCode != 200) {
-      throw Exception('Portalul a raspuns cu ${res.statusCode} la $url');
+      throw Exception('Portalul a raspuns cu eroare (${res.statusCode}).');
     }
     return res.body;
   }
@@ -175,7 +175,7 @@ class PortalClient {
       body: body is String ? body : jsonEncode(body),
     );
     if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw Exception('Portalul a raspuns cu ${res.statusCode} la $url');
+      throw Exception('Portalul a raspuns cu eroare (${res.statusCode}).');
     }
     return _decodeBody(res.body);
   }
@@ -192,7 +192,7 @@ class PortalClient {
       }),
     );
     if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw Exception('Portalul a raspuns cu ${res.statusCode} la $url');
+      throw Exception('Portalul a raspuns cu eroare (${res.statusCode}).');
     }
     return _decodeBody(res.body);
   }
@@ -221,7 +221,7 @@ class PortalClient {
       body: payload,
     );
     if (res.statusCode != 200) {
-      throw Exception('Portalul a raspuns cu ${res.statusCode} la $url');
+      throw Exception('Portalul a raspuns cu eroare (${res.statusCode}).');
     }
     final decoded = res.body.isEmpty ? null : jsonDecode(res.body);
     return decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
@@ -279,7 +279,7 @@ class PortalClient {
       body: payload, // http encodeaza automat ca form-urlencoded
     );
     if (res.statusCode != 200) {
-      throw Exception('Portalul a raspuns cu ${res.statusCode} la $url');
+      throw Exception('Portalul a raspuns cu eroare (${res.statusCode}).');
     }
     final decoded = res.body.isEmpty ? null : jsonDecode(res.body);
     return decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};

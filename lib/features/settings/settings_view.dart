@@ -177,7 +177,6 @@ class _SettingsViewState extends State<SettingsView> {
   // ========================================= 2. FACTURA DE LA APA ILFOV
   Widget _invoiceSection(_SettingsData data) {
     final byEmail = _pending['invoice:EMAIL'] ?? data.emailConfigs.isNotEmpty;
-    final bySms = _pending['invoice:SMS'] ?? data.smsConfigs.isNotEmpty;
 
     return _card(
       icon: Icons.receipt_long_outlined,
@@ -201,24 +200,15 @@ class _SettingsViewState extends State<SettingsView> {
           onChanged: (v) =>
               _toggleInvoiceDelivery('EMAIL', v, _email.text.trim(), data),
         ),
-        const SizedBox(height: 4),
-        // Numarul de telefon se poate scrie MEREU. Daca ar aparea doar cu SMS-ul
-        // pornit, userul n-ar avea cum sa porneasca SMS-ul: activarea cere un
-        // numar, iar numarul nu se putea completa nicaieri.
-        _contactField(
-          controller: _phone,
-          label: 'Nr. telefon',
-          helper: 'Necesar doar daca vrei SMS-uri.',
-          keyboardType: TextInputType.phone,
-        ),
-        _serverSwitch(
-          key: 'invoice:SMS',
-          title: 'Primesc factura prin SMS',
-          subtitle: 'Optional, doar daca preferi SMS in loc de email.',
-          value: bySms,
-          onChanged: (v) =>
-              _toggleInvoiceDelivery('SMS', v, _phone.text.trim(), data),
-        ),
+        // Campul de telefon si toate optiunile prin SMS (factura prin SMS,
+        // anunturi generale prin SMS) au fost eliminate intentionat: SMS-ul
+        // esueaza cu eroare 500 ("Transaction rolled back because it has
+        // been marked as rollback-only") direct pe portalul web ACIlfov, nu
+        // doar in aplicatie - e un bug pe partea de server, nu ceva ce putem
+        // repara din client. `_phone` ramane in cod (vezi mai jos) doar ca
+        // sa nu stricam alertele care verifica `alert.smsAllowed`, dar fara
+        // niciun camp vizibil care sa-l completeze, deci practic e mort -
+        // intentionat, pana ACIlfov repara partea de server.
       ],
     );
   }
@@ -255,8 +245,8 @@ class _SettingsViewState extends State<SettingsView> {
     return _card(
       icon: Icons.campaign_outlined,
       title: 'Alerte si informari de la Apa Ilfov',
-      subtitle: 'Trimise de companie. Folosesc emailul si telefonul '
-          'completate mai sus.',
+      subtitle: 'Trimise de companie. Folosesc adresa de email '
+          'completata mai sus.',
       children: [
         if (data.alerts.isEmpty)
           const Padding(
@@ -289,17 +279,9 @@ class _SettingsViewState extends State<SettingsView> {
             value: v,
           ),
         ),
-        _serverSwitch(
-          key: 'company:sms',
-          title: 'Anunturi generale prin SMS',
-          subtitle: 'Foloseste numarul de mai sus.',
-          value: _pending['company:sms'] ?? (company?.smsAccepted ?? false),
-          onChanged: (v) => _saveCompany(
-            _companyBase(company).copyWith(smsAccepted: v),
-            key: 'company:sms',
-            value: v,
-          ),
-        ),
+        // "Anunturi generale prin SMS" a fost eliminat alaturi de campul de
+        // telefon - vezi comentariul din _invoiceSection despre eroarea 500
+        // pe partea de server ACIlfov pentru SMS.
       ],
     );
   }

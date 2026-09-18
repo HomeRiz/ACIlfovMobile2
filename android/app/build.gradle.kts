@@ -57,6 +57,23 @@ android {
             }
         }
     }
+
+    // Un release semnat cu cheia de debug poate fi impersonat mai usor si nu
+    // ar trebui distribuit. Verificarea e lazy (doar cand se asambleaza chiar
+    // o varianta de release), ca sa nu stricam build-urile de debug pe masini
+    // fara `key.properties`.
+    tasks.matching { it.name.startsWith("assembleRelease") || it.name.startsWith("bundleRelease") }
+        .configureEach {
+            doFirst {
+                if (!hasReleaseKey) {
+                    throw GradleException(
+                        "Lipseste android/key.properties: un build de release nu poate " +
+                            "fi semnat cu cheia de debug. Adauga fisierul cu keystore-ul " +
+                            "de productie inainte de a rula acest task."
+                    )
+                }
+            }
+        }
 }
 
 kotlin {

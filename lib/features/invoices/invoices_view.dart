@@ -111,7 +111,7 @@ class _InvoicesViewState extends State<InvoicesView> {
   }
 
   Widget _list(List invoices) {
-    if (invoices.isEmpty) return const Center(child: Text('No data'));
+    if (invoices.isEmpty) return const Center(child: Text('Fara date'));
     return RefreshIndicator(
       onRefresh: context.read<AccountProvider>().load,
       child: ListView.separated(

@@ -13,7 +13,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../data/cookie_store.dart';
-import '../data/repositories/aci_repository.dart';
+import '../data/repositories/switchable_aci_repository.dart';
 import '../data/secure_store.dart';
 import '../services/background_sync.dart';
 
@@ -22,12 +22,14 @@ class AuthProvider extends ChangeNotifier {
     _restore();
   }
 
-  // Pastrat pentru viitor (ex: verificari care au nevoie de repository).
-  // ignore: unused_field
-  final ACIRepository _repo;
+  // Comutabil intre sursa reala si modul demo - vezi enterDemoMode().
+  final SwitchableACIRepository _repo;
 
   bool _loggedIn = false;
   bool get isLoggedIn => _loggedIn;
+
+  bool _isDemo = false;
+  bool get isDemo => _isDemo;
 
   // La pornire: daca avem token de API salvat, suntem deja logati (viitor).
   Future<void> _restore() async {
@@ -45,8 +47,27 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Intra in modul Verificare/Demo: date generate, fara nicio legatura cu
+  // portalul real - folosit de butonul de pe ecranul de login, pentru
+  // ACIlfov, ca sa poata vedea aplicatia fara sa aiba un cont real acolo.
+  void enterDemoMode() {
+    if (_loggedIn) return;
+    _repo.useDemo = true;
+    _isDemo = true;
+    _loggedIn = true;
+    notifyListeners();
+  }
+
   // Deconectare: sterge tokenul si sesiunea, revine la ecranul de login.
   Future<void> logout() async {
+    if (_isDemo) {
+      // Nicio sesiune reala de sters - doar iesim din modul demo.
+      _repo.useDemo = false;
+      _isDemo = false;
+      _loggedIn = false;
+      notifyListeners();
+      return;
+    }
     await SecureStore.clearToken();
     await CookieStore.clear();
     // Fara sesiune, verificarea din fundal nu are ce sa intrebe portalul.

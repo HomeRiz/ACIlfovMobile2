@@ -94,7 +94,7 @@ class _PaymentsViewState extends State<PaymentsView> {
     if (_error != null) {
       return FailsafeErrorState(error: _error, onReload: _load);
     }
-    if (_payments.isEmpty) return const Center(child: Text('No data'));
+    if (_payments.isEmpty) return const Center(child: Text('Fara date'));
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView.separated(

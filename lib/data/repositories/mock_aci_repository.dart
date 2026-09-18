@@ -19,6 +19,36 @@ import '../models/portal_config.dart';
 import 'aci_repository.dart';
 
 class MockACIRepository implements ACIRepository {
+  // Stare in memorie pentru Configurari, ca sa para ca setarile chiar se
+  // salveaza in timpul unei sesiuni demo (nu se pastreaza intre porniri ale
+  // aplicatiei - doar cat tine sesiunea curenta).
+  final Map<String, InvoiceDeliveryConfig?> _invoiceDelivery = {
+    'EMAIL': InvoiceDeliveryConfig(
+      mode: 'EMAIL',
+      destination: 'EMAIL_TEST',
+      operationDate: DateTime.now().subtract(const Duration(days: 10)),
+    ),
+  };
+
+  List<AlertConfig> _alertConfigs = const [
+    AlertConfig(
+      code: 'ALERTA_EMITERE_FACTURA',
+      label: 'Emitere factura',
+      active: true,
+      email: '',
+    ),
+    AlertConfig(
+      code: 'ALERTA_SCADENTA_AUTOCIT',
+      label: 'Scadenta autocitire',
+      active: false,
+    ),
+  ];
+
+  CompanyNotificationConfig _companyConfig = const CompanyNotificationConfig(
+    emailAccepted: true,
+    smsAccepted: false,
+  );
+
   @override
   Future<Account> getAccount() async {
     await Future.delayed(const Duration(milliseconds: 400));
@@ -117,13 +147,20 @@ class MockACIRepository implements ACIRepository {
     ];
   }
 
+  int _lastMeterValue = 1420;
+  DateTime _lastMeterReadDate = DateTime(
+    DateTime.now().year,
+    DateTime.now().month - 1,
+    26,
+  );
+
   @override
   Future<MeterIndex> getMeterIndex() async {
     await Future.delayed(const Duration(milliseconds: 400));
     final now = DateTime.now();
     return MeterIndex(
-      lastValue: 1420,
-      lastReadDate: DateTime(now.year, now.month - 1, 26),
+      lastValue: _lastMeterValue,
+      lastReadDate: _lastMeterReadDate,
       // Regula ACIlfov: perioada de transmitere e de pe 25 pana la finalul lunii.
       windowStart: DateTime(now.year, now.month, 25),
       windowEnd: DateTime(now.year, now.month + 1, 0), // ultima zi a lunii
@@ -133,7 +170,8 @@ class MockACIRepository implements ACIRepository {
   @override
   Future<void> submitMeterIndex(int value) async {
     await Future.delayed(const Duration(milliseconds: 400));
-    // Mock: nu trimite nimic real, doar simuleaza succesul.
+    _lastMeterValue = value;
+    _lastMeterReadDate = DateTime.now();
   }
 
   @override
@@ -230,13 +268,8 @@ class MockACIRepository implements ACIRepository {
     String mode,
   ) async {
     await Future.delayed(const Duration(milliseconds: 300));
-    return [
-      InvoiceDeliveryConfig(
-        mode: mode,
-        destination: mode == 'EMAIL' ? 'EMAIL_TEST' : 'TELEFON_TEST',
-        operationDate: DateTime.now().subtract(const Duration(days: 10)),
-      ),
-    ];
+    final config = _invoiceDelivery[mode];
+    return config == null ? [] : [config];
   }
 
   @override
@@ -245,6 +278,11 @@ class MockACIRepository implements ACIRepository {
     required String destination,
   }) async {
     await Future.delayed(const Duration(milliseconds: 300));
+    _invoiceDelivery[mode] = InvoiceDeliveryConfig(
+      mode: mode,
+      destination: destination,
+      operationDate: DateTime.now(),
+    );
   }
 
   @override
@@ -253,38 +291,28 @@ class MockACIRepository implements ACIRepository {
     required InvoiceDeliveryConfig config,
   }) async {
     await Future.delayed(const Duration(milliseconds: 300));
+    _invoiceDelivery[mode] = null;
   }
 
   @override
   Future<List<AlertConfig>> getAlertConfigs() async {
     await Future.delayed(const Duration(milliseconds: 300));
-    return const [
-      AlertConfig(
-        code: 'ALERTA_EMITERE_FACTURA',
-        label: 'Emitere factura',
-        active: true,
-        email: '',
-      ),
-      AlertConfig(
-        code: 'ALERTA_SCADENTA_AUTOCIT',
-        label: 'Scadenta autocitire',
-        active: false,
-      ),
-    ];
+    return _alertConfigs;
   }
 
   @override
   Future<void> saveAlertConfig(AlertConfig config) async {
     await Future.delayed(const Duration(milliseconds: 300));
+    _alertConfigs = [
+      for (final existing in _alertConfigs)
+        if (existing.code == config.code) config else existing,
+    ];
   }
 
   @override
   Future<CompanyNotificationConfig> getCompanyNotificationConfig() async {
     await Future.delayed(const Duration(milliseconds: 300));
-    return const CompanyNotificationConfig(
-      emailAccepted: true,
-      smsAccepted: false,
-    );
+    return _companyConfig;
   }
 
   @override
@@ -292,6 +320,7 @@ class MockACIRepository implements ACIRepository {
     CompanyNotificationConfig config,
   ) async {
     await Future.delayed(const Duration(milliseconds: 300));
+    _companyConfig = config;
   }
 
   @override

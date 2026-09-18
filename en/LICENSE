@@ -1,0 +1,54 @@
+EXCLUSIVE USE LICENSE
+
+(Non-authoritative English translation, for reference only. The Romanian
+text at `../LICENSE` in the project root is the sole authoritative version
+of this license.)
+
+Copyright (c) 2026 HomeRiz. All rights reserved, except as explicitly
+granted below.
+
+---
+
+This software and its accompanying documentation (the "Software") are
+provided, in full and exclusively, to **S.C. Apa-Canal Ilfov S.A.
+("ACIlfov")**. Full context for this handover is described in
+`TRANSPARENCY.md`.
+
+## 1. Exclusive and irrevocable grant
+
+HomeRiz grants to ACIlfov, permanently and irrevocably, the full and
+exclusive right to use, copy, modify, distribute, publish, sublicense, and
+relicense the Software, in whole or in part, for any purpose, including
+commercial use, with no time limit, and without HomeRiz being able to
+revoke this right later. ACIlfov may apply any license of its own choosing
+to its copy of the Software, including a closed, proprietary license.
+
+## 2. No other use is permitted
+
+Except for ACIlfov, **no other person or entity — including HomeRiz
+itself** — has the right to use, copy, modify, distribute, publish, or
+otherwise exploit this Software, in whole or in part, without the express
+written permission of ACIlfov, granted after the Software has been
+transferred to ACIlfov.
+
+This restriction applies to the original author (HomeRiz) as well: once
+transferred, HomeRiz may not reuse, copy, or redistribute this code in
+other projects, its own or third parties', without ACIlfov's explicit
+consent.
+
+## 3. No warranty
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT OF THIRD-PARTY
+RIGHTS. IN NO EVENT SHALL HOMERIZ BE LIABLE FOR ANY CLAIM, DAMAGES, OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE,
+ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE, BEFORE OR AFTER THE TRANSFER TO ACILFOV.
+
+---
+
+This text was written for clarity, not as a tested legal instrument.
+HomeRiz is not a lawyer. If this license's legal effect ever matters — a
+dispute, a formal handover, anything with real stakes — it should be
+reviewed by an actual lawyer before either party relies on it.

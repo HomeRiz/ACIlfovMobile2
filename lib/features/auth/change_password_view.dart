@@ -33,6 +33,9 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
         TextField(
           controller: _current,
           obscureText: _obscure,
+          enableSuggestions: false,
+          autocorrect: false,
+          keyboardType: TextInputType.visiblePassword,
           enabled: !_saving,
           decoration: _decoration('Parola curenta'),
         ),
@@ -40,6 +43,9 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
         TextField(
           controller: _next,
           obscureText: _obscure,
+          enableSuggestions: false,
+          autocorrect: false,
+          keyboardType: TextInputType.visiblePassword,
           enabled: !_saving,
           decoration: _decoration('Parola noua'),
         ),
@@ -47,6 +53,9 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
         TextField(
           controller: _confirm,
           obscureText: _obscure,
+          enableSuggestions: false,
+          autocorrect: false,
+          keyboardType: TextInputType.visiblePassword,
           enabled: !_saving,
           decoration: _decoration('Confirma parola noua'),
         ),

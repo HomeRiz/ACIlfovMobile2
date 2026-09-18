@@ -104,18 +104,17 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('campul de telefon e vizibil chiar si cu SMS-ul oprit',
+  testWidgets('optiunile prin SMS si campul de telefon nu mai sunt afisate',
       (tester) async {
-    // Altfel userul nu poate porni SMS-ul niciodata: activarea cere un numar,
-    // iar numarul nu s-ar putea completa nicaieri.
+    // Toate optiunile SMS (factura prin SMS, anunturi generale prin SMS) si
+    // campul de telefon au fost eliminate: activarea SMS esueaza cu eroare
+    // 500 direct pe portalul web ACIlfov (bug de server, nu de aplicatie).
     await tester.pumpWidget(_wrap(_FakeRepo()));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(TextField, 'Nr. telefon'), findsOneWidget);
-    expect(
-      tester.widget<SwitchListTile>(_switchFor('Primesc factura prin SMS')).value,
-      isFalse,
-    );
+    expect(find.widgetWithText(TextField, 'Nr. telefon'), findsNothing);
+    expect(find.text('Primesc factura prin SMS'), findsNothing);
+    expect(find.text('Anunturi generale prin SMS'), findsNothing);
   });
 
   testWidgets('comutatorul de preferinta locala reactioneaza imediat',

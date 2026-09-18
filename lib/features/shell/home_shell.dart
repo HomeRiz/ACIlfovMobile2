@@ -162,7 +162,7 @@ class _HomeShellState extends State<HomeShell> {
       case ShellPage.accountInfo:
         return const AccountInfoView();
       case ShellPage.deleteAccount:
-        return const DeleteAccountView();
+        return DeleteAccountView(onCancel: () => _go(ShellPage.home));
       case ShellPage.info:
         return const InfoView();
     }

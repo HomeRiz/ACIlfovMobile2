@@ -127,36 +127,74 @@ class _ConnectivityGateState extends State<_ConnectivityGate> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    final isDemo = context.watch<AuthProvider>().isDemo;
+    return Column(
       children: [
-        widget.child,
-        if (_online == false)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Material(
-              color: Colors.orange.shade800,
-              child: const SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  child: Row(
-                    children: [
-                      Icon(Icons.wifi_off, color: Colors.white, size: 20),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Verificati conexiunea la internet. Se asteapta conexiunea la internet.',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
+        // Banner persistent cat timp esti in modul Verificare/Demo, ca sa nu se
+        // confunde datele generate cu un cont real (al ACIlfov sau al unui
+        // utilizator). ATENTIE: sta in Column, NU peste continut (Positioned)
+        // - altfel acopera bara de sus (logo/meniu) a ecranelor native.
+        if (isDemo)
+          Material(
+            color: Colors.deepPurple.shade700,
+            child: const SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.visibility_outlined,
+                        color: Colors.white, size: 16),
+                    SizedBox(width: 8),
+                    Text(
+                      'MOD VERIFICARE / DEMO - date generate, nu un cont real',
+                      style: TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
+        Expanded(
+          child: Stack(
+            children: [
+              widget.child,
+              // Bannerul offline ramane un overlay peste continut (nu
+              // permanent, doar cat timp esti offline) - comportament
+              // neschimbat.
+              if (_online == false)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Material(
+                    color: Colors.orange.shade800,
+                    child: const SafeArea(
+                      bottom: false,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        child: Row(
+                          children: [
+                            Icon(Icons.wifi_off,
+                                color: Colors.white, size: 20),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Verificati conexiunea la internet. Se asteapta conexiunea la internet.',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ],
     );
   }

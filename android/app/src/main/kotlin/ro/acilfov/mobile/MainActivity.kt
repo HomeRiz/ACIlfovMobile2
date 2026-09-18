@@ -14,6 +14,15 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val channelName = "acilfov/cookies"
     private val systemChannelName = "acilfov/system"
+    private val portalHost = "acilfov.emsys.ro"
+
+    // Validare defensiva a hostului si in codul nativ, chiar daca partea Dart
+    // trimite deja URL-ul corect - canalul e apelabil doar din Dart (nu din
+    // continutul web), dar nu ne bazam doar pe asta.
+    private fun isPortalUrl(url: String?): Boolean {
+        val host = url?.let { Uri.parse(it).host } ?: return false
+        return host == portalHost
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,13 +41,21 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "getCookies" -> {
                         val url = call.argument<String>("url")
+                        if (!isPortalUrl(url)) {
+                            result.success("")
+                            return@setMethodCallHandler
+                        }
                         result.success(cookieManager.getCookie(url))
                     }
                     "setCookies" -> {
                         val url = call.argument<String>("url")
                         val cookies = call.argument<String>("cookies")
+                        if (!isPortalUrl(url)) {
+                            result.success(false)
+                            return@setMethodCallHandler
+                        }
                         cookieManager.setAcceptCookie(true)
-                        if (url != null && cookies != null) {
+                        if (cookies != null) {
                             for (pair in cookies.split("; ")) {
                                 if (pair.isNotBlank()) {
                                     cookieManager.setCookie(url, "$pair; Secure; HttpOnly; SameSite=Lax")

@@ -5,10 +5,13 @@ build/
 .flutter-plugins
 .flutter-plugins-dependencies
 
-# IDE
+# IDE / AI coding tools
 .idea/
 .vscode/
 *.iml
+.claude/
+.cursor/
+.windsurf/
 
 # Android
 android/.gradle/

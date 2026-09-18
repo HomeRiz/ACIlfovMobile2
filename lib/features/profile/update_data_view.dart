@@ -379,7 +379,7 @@ class _UpdateDataViewState extends State<UpdateDataView> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
+            child: const Text('Inchide'),
           ),
         ],
       ),

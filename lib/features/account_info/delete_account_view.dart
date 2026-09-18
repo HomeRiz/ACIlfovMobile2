@@ -5,7 +5,12 @@ import '../../data/repositories/aci_repository.dart';
 import '../../state/auth_provider.dart';
 
 class DeleteAccountView extends StatefulWidget {
-  const DeleteAccountView({super.key});
+  // Apelat de butonul "Nu". Acest ecran nu e o ruta impinsa pe Navigator
+  // (HomeShell schimba doar continutul corpului dupa selectia din meniu), deci
+  // Navigator.pop nu are ce sa inchida - shell-ul trebuie sa ne duca inapoi.
+  final VoidCallback? onCancel;
+
+  const DeleteAccountView({super.key, this.onCancel});
 
   @override
   State<DeleteAccountView> createState() => _DeleteAccountViewState();
@@ -54,7 +59,11 @@ class _DeleteAccountViewState extends State<DeleteAccountView> {
             const SizedBox(width: 12),
             Expanded(
               child: OutlinedButton(
-                onPressed: _deleting ? null : () => Navigator.maybePop(context),
+                onPressed: _deleting
+                    ? null
+                    : () => widget.onCancel != null
+                        ? widget.onCancel!()
+                        : Navigator.maybePop(context),
                 child: const Text('Nu'),
               ),
             ),
